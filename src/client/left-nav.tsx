@@ -1,24 +1,28 @@
 /**
- * Left nav: the three-mode switcher injected INTO the app's own left
- * sidebar column — 会话 / 目录 / Git. The native sidebar is never
- * re-implemented and never unmounted:
+ * Left nav: the 会话/目录/Git mode switcher for the app's OWN left sidebar.
  *
- * - sessions mode: the dock is a small floating pill at the column's bottom
- *   center; the native session list keeps rendering untouched behind it.
- * - explorer/git modes: the dock expands to an opaque full-column overlay
- *   (bar on top, content below) that COVERS the native sidebar without
- *   unmounting it — switching back restores it instantly, with its scroll
- *   and expansion state intact.
+ * Geometry (the "fixed switcher" contract):
+ * - The switcher sits DIRECTLY under the native 新会话 button, at the same
+ *   coordinates in every mode. layout.css reserves that strip by pushing
+ *   the [data-slot="sidebar.workspaces"] region down 38px with a
+ *   compensating negative bottom margin (net layout shift: zero — the
+ *   native footer never moves).
+ * - A single absolutely-positioned dock overlays the reserved strip plus
+ *   the region's rect: the switcher renders into the strip, and in
+ *   explorer/git modes an opaque content body covers the native list area
+ *   EXACTLY — header and footer are native, untouched, always visible.
+ * - The native sidebar is never unmounted: in sessions mode the dock is
+ *   transparent with pointer-events only on the switcher; in content modes
+ *   the opaque body simply hides the list behind it, so switching back
+ *   restores scroll and expansion state instantly.
  *
- * Wiring: tree file clicks open the editor tab through openSidebarFile
- * (the same path the chat file-open interception uses), git rows open diff
- * tabs through the betterSidebar service; both auto-expand the workbench
- * panel so the open never lands out of sight. The scope (sessionId + cwd)
- * follows the runtime sessions feed, so switching conversations retargets
- * the tree and git views automatically. On a collapsed (rail) sidebar the
- * dock hides itself entirely — the native rail owns that width.
+ * Anchoring uses the official slot host ([data-slot="sidebar.workspaces"])
+ * — never a native class name — and a ResizeObserver keeps the dock glued
+ * to the region across sidebar collapse/resize. On the 56px rail the dock
+ * hides entirely. Disposal removes every trace (React root, DOM node,
+ * inline styles) so the native sidebar restores exactly.
  */
-import { createElement, useEffect, useMemo, useState } from 'react'
+import { createElement, useMemo, useState } from 'react'
 import { useSyncExternalStore } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import clsx from 'clsx'
@@ -38,7 +42,10 @@ export type LeftNavMode = 'sessions' | 'explorer' | 'git'
 /** localStorage key persisting the mode across reloads. */
 const MODE_KEY = 'dsh-better-sidebar:left-mode'
 
-/** Column width below which the native sidebar is a rail and the dock hides. */
+/** The reserved strip height above the workspaces region (layout.css margin). */
+const SWITCH_STRIP = 38
+
+/** Region width below which the native sidebar is a rail and the dock hides. */
 const RAIL_MAX = 120
 
 function loadMode(): LeftNavMode {
@@ -49,8 +56,8 @@ function loadMode(): LeftNavMode {
   return 'sessions'
 }
 
-function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }) {
-  const { ctx, store, dock } = props
+function LeftNav(props: { ctx: Context; store: SidebarStore }) {
+  const { ctx, store } = props
   const [mode, setMode] = useState<LeftNavMode>(loadMode)
   const [expanded, setExpanded] = useState<string[]>([])
 
@@ -65,12 +72,6 @@ function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }
     () => (sessionId === undefined ? undefined : { sessionId, cwd }),
     [sessionId, cwd],
   )
-
-  // The dock element's geometry is mode-driven (pill vs full overlay) and
-  // lives outside React — keep the attribute in sync here.
-  useEffect(() => {
-    dock.setAttribute('data-mode', mode)
-  }, [dock, mode])
 
   const switchMode = (next: LeftNavMode): void => {
     setMode(next)
@@ -90,6 +91,7 @@ function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }
   const openDiff = (_tab: SidebarTab): void => { /* hidden: no editor surface */ }
   // The store stays in the props contract for the day the panel returns.
   void store
+
   const toggleDir = (path: string): void => {
     setExpanded(prev => (prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path]))
   }
@@ -101,7 +103,7 @@ function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }
   ]
 
   return (
-    <div className={clsx(css.leftNav, mode !== 'sessions' && css.leftNavFull)}>
+    <div className={css.leftNav}>
       <div className={css.leftNavSwitch} role="tablist" aria-label={t('leftNavModes')}>
         {modes.map((entry) => {
           const Icon = entry.icon
@@ -143,41 +145,60 @@ function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }
 }
 
 /**
- * Inject the left-nav dock into the app's sidebar column and return the
- * disposer. The dock is a sibling of the native [data-slot="sidebar"] host
- * inside the AppFrame's sidebar grid item; the column becomes
- * position:relative so the dock can overlay it in content modes. A watcher
- * re-runs the locator across the boot frame swap and re-inserts the dock if
- * the app ever drops the foreign node. Disposal removes every trace
- * (React root, DOM node, inline styles) so the native sidebar restores
- * exactly.
+ * Inject the left-nav dock and return the disposer. The dock is appended to
+ * the AppFrame's sidebar column (the region host's ancestor grid item) and
+ * positioned over the reserved switch strip + the workspaces region by
+ * direct rect measurement; a ResizeObserver on the region keeps it glued
+ * (column resize, rail collapse, window resize). A watcher re-runs the
+ * locator across the boot frame swap and re-inserts the dock if the app
+ * ever drops the foreign node.
  */
 export function mountLeftNav(ctx: Context, store: SidebarStore): () => void {
   let disposed = false
   let root: Root | undefined
   let dock: HTMLDivElement | undefined
+  let region: HTMLElement | undefined
   let column: HTMLElement | undefined
   let columnPosition = ''
   let rail = false
-  let railObserver: ResizeObserver | undefined
+  let regionObserver: ResizeObserver | undefined
   let watcher: MutationObserver | undefined
+
+  /** Glue the dock to the reserved strip + the region's rect. */
+  const updateRect = (): void => {
+    if (dock === undefined || region === undefined || column === undefined) return
+    const rect = region.getBoundingClientRect()
+    const colRect = column.getBoundingClientRect()
+    dock.style.left = `${rect.left - colRect.left}px`
+    dock.style.top = `${rect.top - colRect.top - SWITCH_STRIP}px`
+    dock.style.width = `${rect.width}px`
+    dock.style.height = `${rect.height + SWITCH_STRIP}px`
+    const nextRail = rect.width < RAIL_MAX
+    if (nextRail !== rail) {
+      rail = nextRail
+      if (rail) dock.setAttribute('data-rail', '')
+      else dock.removeAttribute('data-rail')
+    }
+  }
 
   const teardown = (): void => {
     root?.unmount()
     root = undefined
     dock?.remove()
     dock = undefined
-    railObserver?.disconnect()
-    railObserver = undefined
+    regionObserver?.disconnect()
+    regionObserver = undefined
+    region = undefined
     if (column !== undefined) column.style.position = columnPosition
     column = undefined
   }
 
   const locate = (): void => {
     if (disposed || dock !== undefined) return
-    const host = document.querySelector('#root [data-slot="sidebar"]') as HTMLElement | null
-    const col = host?.parentElement
+    const host = document.querySelector('#root [data-slot="sidebar.workspaces"]') as HTMLElement | null
+    const col = document.querySelector('#root [data-slot="sidebar"]')?.parentElement as HTMLElement | null | undefined
     if (host === null || col === null || col === undefined) return
+    region = host
     column = col
     columnPosition = col.style.position
     if (window.getComputedStyle(col).position === 'static') col.style.position = 'relative'
@@ -187,20 +208,11 @@ export function mountLeftNav(ctx: Context, store: SidebarStore): () => void {
     dock.className = css.leftNavDock ?? ''
     col.appendChild(dock)
     root = createRoot(dock)
-    root.render(createElement(LeftNav, { ctx, store, dock }))
-    // Rail adaptation: below RAIL_MAX the native icon rail owns the column —
-    // the dock hides (CSS on [data-rail]) instead of squeezing the modes.
-    rail = col.getBoundingClientRect().width < RAIL_MAX
-    if (rail) dock.setAttribute('data-rail', '')
-    railObserver = new ResizeObserver(() => {
-      if (dock === undefined || column === undefined) return
-      const next = column.getBoundingClientRect().width < RAIL_MAX
-      if (next === rail) return
-      rail = next
-      if (rail) dock.setAttribute('data-rail', '')
-      else dock.removeAttribute('data-rail')
-    })
-    railObserver.observe(col)
+    root.render(createElement(LeftNav, { ctx, store }))
+    rail = false
+    updateRect()
+    regionObserver = new ResizeObserver(updateRect)
+    regionObserver.observe(host)
   }
 
   locate()
@@ -208,6 +220,7 @@ export function mountLeftNav(ctx: Context, store: SidebarStore): () => void {
     if (disposed) return
     if (dock !== undefined && !dock.isConnected) teardown()
     if (dock === undefined) locate()
+    else updateRect()
   })
   const rootEl = document.getElementById('root')
   if (rootEl !== null) watcher.observe(rootEl, { childList: true, subtree: true })

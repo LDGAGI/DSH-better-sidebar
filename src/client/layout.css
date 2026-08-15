@@ -36,6 +36,17 @@
     margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
+/* Reserve the 38px switch strip directly under the native 新会话 button:
+   the workspaces region drops 38px while a compensating negative bottom
+   margin keeps the column's total height (and the native footer) exactly
+   where it was — net layout shift is zero, so the left-nav switcher has a
+   fixed home in every mode. Anchored on the official slot host, never on a
+   native class. */
+#root [data-slot="sidebar.workspaces"] {
+  margin-top: 38px !important;
+  margin-bottom: -38px !important;
+}
+
 body[data-dsh-sidebar-dragging] #root > div[data-slot="root"] > div > div:nth-child(2) {
   transition: none;
 }

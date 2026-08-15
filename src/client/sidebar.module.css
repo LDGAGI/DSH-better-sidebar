@@ -714,11 +714,12 @@
 
 /* ── Left nav dock (the native sidebar's 会话/目录/Git switcher) ───────── */
 
-/* The dock is a plain div appended to the AppFrame's sidebar column. In
-   sessions mode it is a floating pill at the column's bottom center (the
-   native list keeps rendering behind it); in content modes it becomes an
-   opaque full-column overlay. pointer-events opt-in keeps the pill's
-   surroundings clickable. */
+/* The dock overlays the reserved 38px switch strip (layout.css margins the
+   workspaces region down) plus the region's rect; left/top/width/height are
+   written inline by the mount (ResizeObserver-glued). It is transparent in
+   every mode — only the switcher and (in content modes) the opaque body
+   opt into pointer events, so the native list and footer stay fully
+   interactive underneath. */
 .leftNavDock {
   position: absolute;
   z-index: 6;
@@ -732,49 +733,28 @@
   display: none;
 }
 
-.leftNavDock[data-mode='sessions'] {
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-}
-
-.leftNavDock[data-mode='explorer'],
-.leftNavDock[data-mode='git'] {
-  inset: 0;
-  background: var(--dsw-specific-sidebar-fill);
-}
-
 .leftNav {
   display: flex;
   flex-direction: column;
-  pointer-events: auto;
-}
-
-.leftNavFull {
-  flex: 1;
-  min-height: 0;
   width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-/* The segmented mode switch: layered pill, hairline border, 6px radius —
-   the same control grammar as the panel's own capsule buttons. */
+/* The segmented mode switch: one fixed position in EVERY mode — the 38px
+   strip directly under the native 新会话 button. Full width with 12px side
+   margins, layered pill fill, hairline border, 8px radius. */
 .leftNavSwitch {
+  flex: none;
   display: flex;
   gap: 2px;
+  height: 30px;
+  margin: 4px 12px;
   padding: 2px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);
-}
-
-/* In full-overlay mode the switch stretches across the top as a bar. */
-.leftNavFull .leftNavSwitch {
-  margin: 8px 8px 4px;
-  padding: 0 0 6px;
-  border: none;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 0;
-  background: transparent;
+  pointer-events: auto;
 }
 
 .leftNavMode {
@@ -783,8 +763,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 26px;
-  padding: 0 10px;
+  height: 24px;
+  padding: 0 8px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -795,7 +775,6 @@
 }
 
 .leftNavMode:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
 }
 
@@ -805,12 +784,17 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* The content body (explorer/git): covers the native list area EXACTLY —
+   opaque sidebar fill, same surface, so the native tree stays mounted
+   behind it with its scroll state intact. */
 .leftNavBody {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--dsw-specific-sidebar-fill);
+  pointer-events: auto;
 }
 
 .sessionsEmpty {
