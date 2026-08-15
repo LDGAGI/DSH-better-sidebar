@@ -234,21 +234,21 @@ describe('sidebar state', () => {
     const gitTab = { id: 'git', type: 'git' as const, title: 'Git' }
     s = openTabInActivePane(s, gitTab)
     expect(s.splits.kind).toBe('leaf')
-    expect((s.splits as { tabs: unknown[] }).tabs).toHaveLength(3)
+    expect((s.splits as { tabs: unknown[] }).tabs).toHaveLength(2)
     // Reopening with the SAME id focuses the existing tab instead of duplicating.
     const after = openTabInActivePane(s, { id: 'git', type: 'git' as const, title: 'Git' })
-    expect((after.splits as { tabs: unknown[] }).tabs).toHaveLength(3)
+    expect((after.splits as { tabs: unknown[] }).tabs).toHaveLength(2)
     // A different id opens a new tab (type-level dedupe is the service's job).
     const after2 = openTabInActivePane(s, { id: 'git2', type: 'git' as const, title: 'Git' })
-    expect((after2.splits as { tabs: unknown[] }).tabs).toHaveLength(4)
+    expect((after2.splits as { tabs: unknown[] }).tabs).toHaveLength(3)
   })
 
   it('opens multiple editors with distinct ids (path-level dedupe is the service descriptor\'s job)', () => {
     let s = state()
-    const seedIds = (s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)
+    const firstId = (s.splits as { tabs: { id: string }[] }).tabs[0]!.id
     s = openTabInActivePane(s, { id: 'e1', type: 'editor', title: 'a.ts', path: '/p/a.ts' })
     const after = openTabInActivePane(s, { id: 'e2', type: 'editor', title: 'a.ts', path: '/p/a.ts' })
-    expect((after.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual([...seedIds, 'e1', 'e2'])
+    expect((after.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual([firstId, 'e1', 'e2'])
   })
 
   const diffTab = (id: string): SidebarTab => ({
@@ -357,10 +357,10 @@ describe('sidebar state', () => {
   it('dedupes the single-instance subagent tab (focuses instead of duplicating)', () => {
     let s = state()
     s = openTabInActivePane(s, { id: 'subagent', type: 'subagent', title: 'Subagents' })
-    expect((s.splits as { tabs: unknown[] }).tabs).toHaveLength(3)
+    expect((s.splits as { tabs: unknown[] }).tabs).toHaveLength(2)
     // Reopening (e.g. the auto-activation effect) focuses the existing tab.
     const after = openTabInActivePane(s, { id: 'subagent', type: 'subagent', title: 'Subagents' })
-    expect((after.splits as { tabs: unknown[] }).tabs).toHaveLength(3)
+    expect((after.splits as { tabs: unknown[] }).tabs).toHaveLength(2)
     const tabs = (after.splits as { tabs: { type: string; id: string }[] }).tabs
     expect(tabs.filter(tab => tab.type === 'subagent')).toHaveLength(1)
   })
@@ -374,12 +374,12 @@ describe('sidebar state', () => {
     const explorerId = (split.children[0] as { id: string }).id
     const otherId = (split.children[1] as { id: string }).id
     expect((split.children[1] as { tabs: unknown[] }).tabs).toHaveLength(0)
-    const paneATabs = ((split.children[0] as { tabs: { id: string }[] }).tabs).map(t => t.id)
-    for (const tabId of paneATabs) s = moveTab(s, explorerId, tabId, otherId)
+    const explorerTab = ((split.children[0] as { tabs: { id: string }[] }).tabs[0]!).id
+    s = moveTab(s, explorerId, explorerTab, otherId)
     // The source pane emptied and was removed; the target leaf is promoted.
     expect(s.splits.kind).toBe('leaf')
     expect((s.splits as { id: string }).id).toBe(otherId)
-    expect((s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual(paneATabs)
+    expect((s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual([explorerTab])
   })
 
   it('dragging a tab to a pane edge splits the pane with the tab in a fresh leaf', () => {
@@ -407,11 +407,11 @@ describe('sidebar state', () => {
     const split = s.splits as Extract<SplitNode, { kind: 'split' }>
     const paneA = split.children[0] as { id: string; tabs: { id: string }[] }
     const paneB = split.children[1] as { id: string; tabs: { id: string }[] }
-    const tabIds = paneA.tabs.map(t => t.id)
-    for (const tabId of tabIds) s = moveTabToEdge(s, paneA.id, tabId, paneB.id, 'center')
+    const tabId = paneA.tabs[0]!.id
+    s = moveTabToEdge(s, paneA.id, tabId, paneB.id, 'center')
     // paneA 空了被移除，树退化为 paneB（含 tab）。
     expect(s.splits.kind).toBe('leaf')
-    expect((s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual(tabIds)
+    expect((s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)).toEqual([tabId])
   })
 
   it('dragging a tab back onto its own pane center reorders it', () => {
@@ -422,7 +422,7 @@ describe('sidebar state', () => {
     s = moveTabToEdge(s, leaf.id, first, leaf.id, 'center')
     const after = s.splits as { tabs: { id: string }[] }
     expect(after.tabs[after.tabs.length - 1]!.id).toBe(first)
-    expect(after.tabs).toHaveLength(3)
+    expect(after.tabs).toHaveLength(2)
   })
 
   it('closing the last tab removes the pane (promotes the sibling)', () => {
@@ -431,11 +431,11 @@ describe('sidebar state', () => {
     const split = s.splits as Extract<SplitNode, { kind: 'split' }>
     const paneA = split.children[0] as { id: string; tabs: { id: string }[] }
     const paneB = split.children[1] as { id: string }
-    const seedIds = paneA.tabs.map(t => t.id)
-    // paneA gets a terminal; the seeded tabs move to paneB; closing the
+    const explorerId = paneA.tabs[0]!.id
+    // paneA gets a terminal; the explorer moves to paneB; closing the
     // terminal empties paneA, which is removed, promoting paneB.
     s = openTabInActivePane(s, { id: 't', type: 'terminal', title: 'Terminal 1' })
-    for (const tabId of seedIds) s = moveTab(s, paneA.id, tabId, paneB.id)
+    s = moveTab(s, paneA.id, explorerId, paneB.id)
     s = activateTab(s, paneA.id, 't')
     s = closeTab(s, paneA.id, 't')
     expect(s.splits.kind).toBe('leaf')
@@ -525,7 +525,7 @@ describe('sidebar state', () => {
     s = moveTab(s, paneA.id, explorerId, paneB.id)
     expect(tabOpenIn(s, explorerId)).toBe(true)
     // Closing it removes it from the whole tree.
-    const target = allLeaves(s.splits).find(leaf => leaf.tabs.some(t => t.id === explorerId))!
+    const target = s.splits as { id: string; tabs: { id: string }[] }
     s = closeTab(s, target.id, explorerId)
     expect(tabOpenIn(s, explorerId)).toBe(false)
     // A terminal tab added later is open too.
@@ -574,7 +574,7 @@ describe('sidebar state', () => {
     const migrated = migrateBottomTabs(s)
     // All tabs now live in the right tree's first leaf, bottom tabs appended.
     expect((migrated.splits as { tabs: SidebarTab[] }).tabs.map(t => t.id))
-      .toEqual([expect.stringMatching(/^tab:/), expect.stringMatching(/^tab:/), 'terminal:1', 'terminal:2'])
+      .toEqual([expect.stringMatching(/^tab:/), 'terminal:1', 'terminal:2'])
     // The bottom tree is emptied (structure stays), the panel closes, and
     // new tabs land in the right tree.
     expect((migrated.bottomSplits as { tabs: SidebarTab[] }).tabs).toHaveLength(0)
@@ -631,7 +631,7 @@ describe('sidebar state', () => {
     s = openTabInActivePane(s, tab)
     expect((s.bottomSplits as { tabs: SidebarTab[] }).tabs.map(t => t.id)).toContain('git')
     // The right tree is untouched.
-    expect((s.splits as { tabs: SidebarTab[] }).tabs.map(t => t.type)).toEqual(['sessions', 'explorer'])
+    expect((s.splits as { tabs: SidebarTab[] }).tabs.map(t => t.type)).toEqual(['explorer'])
     expect(s.activePane).toBe(bottomPane)
     // The id safety net works across trees: reopening the same id focuses it.
     const after = openTabInActivePane(s, tab)
@@ -758,16 +758,16 @@ describe('sidebar state', () => {
     s = toggleBottomPanel(s)
     const rightPane = (s.splits as { id: string }).id
     const bottomPane = (s.bottomSplits as { id: string }).id
-    const seedIds = (s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)
-    // Drag the seeded tabs from the right panel into the bottom panel (center).
-    for (const tabId of seedIds) s = moveTabToEdge(s, rightPane, tabId, bottomPane, 'center')
-    expect((s.bottomSplits as { tabs: SidebarTab[] }).tabs.map(t => t.id)).toEqual(seedIds)
+    const explorerId = (s.splits as { tabs: { id: string }[] }).tabs[0]!.id
+    // Drag the explorer tab from the right panel into the bottom panel (center).
+    s = moveTabToEdge(s, rightPane, explorerId, bottomPane, 'center')
+    expect((s.bottomSplits as { tabs: SidebarTab[] }).tabs.map(t => t.id)).toContain(explorerId)
     expect((s.splits as { tabs: SidebarTab[] }).tabs).toHaveLength(0)
     expect(s.activePane).toBe(bottomPane)
     // And back, inserted at an index.
-    s = moveTab(s, bottomPane, seedIds[0]!, rightPane, 0)
-    expect((s.splits as { tabs: SidebarTab[] }).tabs[0]!.id).toBe(seedIds[0])
-    expect((s.bottomSplits as { tabs: SidebarTab[] }).tabs).toHaveLength(seedIds.length - 1)
+    s = moveTab(s, bottomPane, explorerId, rightPane, 0)
+    expect((s.splits as { tabs: SidebarTab[] }).tabs[0]!.id).toBe(explorerId)
+    expect((s.bottomSplits as { tabs: SidebarTab[] }).tabs).toHaveLength(0)
   })
 
   it('moves a tab across panels by splitting the target pane (edge drop)', () => {
@@ -775,16 +775,16 @@ describe('sidebar state', () => {
     s = toggleBottomPanel(s)
     const rightPane = (s.splits as { id: string }).id
     const bottomPane = (s.bottomSplits as { id: string }).id
-    const seedIds = (s.splits as { tabs: { id: string }[] }).tabs.map(t => t.id)
-    for (const tabId of seedIds) s = moveTabToEdge(s, rightPane, tabId, bottomPane, 'right')
+    const explorerId = (s.splits as { tabs: { id: string }[] }).tabs[0]!.id
+    s = moveTabToEdge(s, rightPane, explorerId, bottomPane, 'right')
     // The source tree empties back to a leaf; the target tree splits.
     expect(s.splits.kind).toBe('leaf')
     expect((s.splits as { tabs: SidebarTab[] }).tabs).toHaveLength(0)
     expect(s.bottomSplits.kind).toBe('split')
-    expect(tabOpenIn(s, seedIds[0]!)).toBe(true)
+    expect(tabOpenIn(s, explorerId)).toBe(true)
     const split = s.bottomSplits as Extract<SplitNode, { kind: 'split' }>
     expect(split.children.some(
-      child => child.kind === 'leaf' && (child as { tabs: SidebarTab[] }).tabs.some(t => t.id === seedIds[0]),
+      child => child.kind === 'leaf' && (child as { tabs: SidebarTab[] }).tabs.some(t => t.id === explorerId),
     )).toBe(true)
     // The fresh leaf (the drop's active pane) differs from the source pane.
     expect(s.activePane).not.toBe(rightPane)
@@ -1040,7 +1040,8 @@ describe('persisted state sanitization', () => {
   it('falls back from a stale active pane instead of dropping the open', () => {
     let s = makeDefaultState()
     const paneA = allLeaves(s.splits)[0]!.id
-    for (const tab of allLeaves(s.splits)[0]!.tabs) s = closeTab(s, paneA, tab.id)
+    const explorerTab = allLeaves(s.splits)[0]!.tabs.find(tab => tab.type === 'explorer')!.id
+    s = closeTab(s, paneA, explorerTab)
     s = openTabInActivePane(s, { id: 'editor:/a.ts', type: 'editor', title: 'a.ts', path: '/a.ts' })
     const split = insertLeafAt(s.splits, paneA, 'col', { id: 'terminal:1', type: 'terminal', title: 'Terminal 1' }, false)
     s = { ...s, splits: split.node, activePane: paneA }
@@ -1364,14 +1365,14 @@ describe('side card preferences', () => {
     store.setSession('no-explorer')
     const state = store.getSnapshot().state!
     const tabs = allLeaves(state.splits).flatMap(leaf => leaf.tabs)
-    expect(tabs.map(tab => tab.type)).toEqual(['sessions'])
+    expect(tabs).toHaveLength(0)
     expect(state.splits.kind).toBe('leaf')
     // Re-enabling seeds the explorer tab again.
     const openStore = createSidebarStore()
     openStore.setPrefs({ openByDefault: true, defaultWidthPercent: 30, autoOpenSubagent: true, autoOpenJobs: true, agentTerminalTools: false, bottomPanelAutoTerminal: true, terminalFontFamily: '', terminalFontSize: 13, interceptOpenPath: true, titleBarCompat: false, titleBarStripPx: 40, htmlViewerNoSandbox: false, htmlViewerDefaultUnsafe: false, browserNoSandbox: false, browserInterceptLinks: true, browserInterceptHttp: true, browserInterceptHttps: false, tabsEnabled: {}, viewersEnabled: {}, pluginSettings: {} })
     openStore.setSession('with-explorer')
     const openTabs = allLeaves(openStore.getSnapshot().state!.splits).flatMap(leaf => leaf.tabs)
-    expect(openTabs.map(tab => tab.type)).toEqual(['sessions', 'explorer'])
+    expect(openTabs.map(tab => tab.type)).toEqual(['explorer'])
   })
 
   it('derives the default width from the window percent with clamps', () => {
@@ -1384,10 +1385,9 @@ describe('side card preferences', () => {
     expect(makeDefaultState().panelOpen).toBe(true)
     expect(makeDefaultState(400, false).panelOpen).toBe(false)
     expect(makeDefaultState(400, false).width).toBe(400)
-    // The seedExplorer flag controls the default explorer tab; the sessions
-    // tab is always seeded as the landing tab.
+    // The seedExplorer flag controls the default explorer tab.
     expect(makeDefaultState(400, true, false).splits.kind).toBe('leaf')
-    expect((makeDefaultState(400, true, false).splits as { tabs: unknown[] }).tabs).toHaveLength(1)
+    expect((makeDefaultState(400, true, false).splits as { tabs: unknown[] }).tabs).toHaveLength(0)
   })
 })
 

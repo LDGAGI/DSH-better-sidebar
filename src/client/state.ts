@@ -148,13 +148,10 @@ function maxCounterId(parsed: unknown): number {
  * session starts with an empty pane instead of a tab they turned off. */
 export function makeDefaultState(width = PANEL_DEFAULT, panelOpen = true, seedExplorer = true): SidebarState {
   const leaf: SidebarLeaf = { kind: 'leaf', id: uid('pane'), tabs: [], active: null }
-  // The sessions mode is the default landing tab (the left panel's primary
-  // mode); the explorer sits beside it when enabled, one click away.
-  leaf.tabs = [{ id: uid('tab'), type: 'sessions', title: 'Sessions' }]
   if (seedExplorer) {
-    leaf.tabs.push({ id: uid('tab'), type: 'explorer', title: 'Explorer' })
+    leaf.tabs = [{ id: uid('tab'), type: 'explorer', title: 'Explorer' }]
+    leaf.active = leaf.tabs[0]!.id
   }
-  leaf.active = leaf.tabs[0]!.id
   // The bottom panel starts closed with an empty pane (its welcome cards
   // offer the openable types on first use).
   const bottomLeaf: SidebarLeaf = { kind: 'leaf', id: uid('pane'), tabs: [], active: null }

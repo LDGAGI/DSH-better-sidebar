@@ -109,7 +109,7 @@ describe('enable switches (declarative settings)', () => {
     store.setSession('s1')
     service.openTab({ type: 'explorer', title: 'Explorer' })
     const tabs = allLeaves(store.getSnapshot().state!.splits).flatMap(l => l.tabs)
-    expect(tabs.map(tab => tab.type)).toEqual(['sessions'])
+    expect(tabs).toHaveLength(0)
   })
 
   it('matchFileViewer skips a disabled viewer (files fall through)', () => {
