@@ -24,10 +24,10 @@ function setup(): { service: ReturnType<typeof createBetterSidebarService>; stor
 }
 
 describe('built-in tab registrations', () => {
-  it('registers the 8 built-in tabs', () => {
+  it('registers the 7 built-in tabs', () => {
     const { service } = setup()
     expect(service.getTabs().map(t => t.id).sort()).toEqual(
-      ['browser', 'diff', 'editor', 'explorer', 'git', 'sessions', 'subagent', 'terminal'],
+      ['browser', 'diff', 'editor', 'explorer', 'git', 'subagent', 'terminal'],
     )
   })
 
@@ -38,7 +38,7 @@ describe('built-in tab registrations', () => {
 
   it('single-instance tabs use the single sugar', () => {
     const { service } = setup()
-    for (const id of ['sessions', 'explorer', 'git', 'subagent']) {
+    for (const id of ['explorer', 'git', 'subagent']) {
       expect(service.getTab(id)?.single).toBe(true)
     }
   })
