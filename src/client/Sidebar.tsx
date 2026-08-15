@@ -37,7 +37,7 @@ import {
   resizeSplitIn, setBottomHeight, setWidth, toggleBottomPanel, toggleExpanded, togglePanel,
   type DropZone, type SidebarState, type SidebarStore, type SidebarTab, type SplitNode,
 } from './state.ts'
-import { IconPanelBottomOutline16, IconPanelRightOutline16 } from './icons.tsx'
+import { IconPanelBottomOutline16, IconPanelLeftOutline16 } from './icons.tsx'
 import { Workbench, type WorkbenchActions } from './split-pane.tsx'
 import { useNarrowViewport } from './breakpoints.ts'
 import type { NewTabOption } from './TabBar.tsx'
@@ -358,6 +358,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   // right panel opens/closes; a frame that never appears keeps the initial
   // zero-size fallback (the panel renders at 0 width until measured).
   const [centerRect, setCenterRect] = useState({ left: 0, right: 0 })
+  // The app's own left sidebar column's right edge: the left panel docks
+  // exactly there (between that sidebar and the conversation). Measured from
+  // the center column's previous sibling (AppFrame grid item 1) so it tracks
+  // the native sidebar's rail/wide transitions.
+  const [sidebarRight, setSidebarRight] = useState(0)
   // Refs keep the measure step stable across renders and let it skip work
   // mid-drag: during a width/corner drag the layout push resizes the center
   // column every frame, and reacting (setCenterRect → re-render) would
@@ -377,6 +382,13 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       prev.left === rect.left && prev.right === rect.right
         ? prev
         : { left: rect.left, right: rect.right })
+    // The native sidebar column is the center column's previous sibling in
+    // the AppFrame grid (sidebarCol, centerCol, detailsCol).
+    const sidebarCol = col.previousElementSibling as HTMLElement | null
+    if (sidebarCol !== null) {
+      const right = Math.round(sidebarCol.getBoundingClientRect().right)
+      setSidebarRight(prev => (prev === right ? prev : right))
+    }
   }, [])
   useEffect(() => {
     let disposed = false
@@ -488,21 +500,21 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     Math.min(Math.max(BOTTOM_MIN, Math.round(height)), Math.max(BOTTOM_MIN, window.innerHeight - PANEL_MIN))
 
   /** Apply a drag size to the DOM without touching React state or the store.
-   *  The bottom panel's right edge tracks the right panel's left edge HERE
-   *  too — React state only updates on release, so the inline right must be
-   *  written directly or the bottom panel would lag the sidebar mid-drag. */
+   *  The bottom panel's left edge tracks the panel's right edge HERE too —
+   *  React state only updates on release, so the inline left must be written
+   *  directly or the bottom panel would lag the sidebar mid-drag. */
   const applyDrag = (width: number, height: number): void => {
     panelRef.current?.style.setProperty('width', `${width}px`)
     bottomRef.current?.style.setProperty('height', `${height}px`)
-    // centerRect.right is the center column's right edge at the committed
-    // width (innerWidth - state.width - detailsWidth), so this equals
-    // `width + detailsWidth` — derived from the measured column, keeping the
+    // centerRect.left is the center column's left edge at the committed
+    // width (sidebarRight + state.width), so this equals
+    // `sidebarRight + width` — derived from the measured column, keeping the
     // drag write-only (no React re-render mid-drag).
-    bottomRef.current?.style.setProperty('right', `${(window.innerWidth - centerRect.right) + (width - (state?.width ?? 0))}px`)
+    bottomRef.current?.style.setProperty('left', `${centerRect.left + (width - (state?.width ?? 0))}px`)
     document.documentElement.style.setProperty('--dsh-sidebar-width', `${width}px`)
     document.documentElement.style.setProperty('--dsh-sidebar-height', `${height}px`)
     if (cornerRef.current !== null) {
-      cornerRef.current.style.left = `${window.innerWidth - width - 6}px`
+      cornerRef.current.style.left = `${sidebarRight + width - 6}px`
       cornerRef.current.style.top = `${window.innerHeight - height - 6}px`
     }
   }
@@ -651,7 +663,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
         )}
         <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
           <button type="button" className={css.toggleButton} disabled aria-label={t('noSession')}>
-            <IconPanelRightOutline16 />
+            <IconPanelLeftOutline16 />
           </button>
         </Tooltip>
       </div>
@@ -758,23 +770,23 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             aria-label={state.panelOpen ? t('collapse') : t('expand')}
             onClick={() => { store.reduce(togglePanel) }}
           >
-            <IconPanelRightOutline16 />
+            <IconPanelLeftOutline16 />
           </button>
         </Tooltip>
       </div>
       {/*
-        The right panel stays mounted while collapsed (hidden off-screen) so
+        The left panel stays mounted while collapsed (hidden off-screen) so
         the slide in/out can animate; visibility hides it after the slide
-        settles. Its bottom edge follows the bottom panel's height (0 while
-        the bottom panel is closed) — the VSCode-style "sidebar above panel".
-        On NARROW viewports it is a full-width drawer holding both
-        workbenches (see MobileWorkbench); the width drag strip is not
-        offered there — a full-screen sheet has nothing to drag.
+        settles. It docks BETWEEN the app's own left sidebar and the
+        conversation: its left edge is the sidebar column's measured right
+        edge (0 while unmeasured / on narrow viewports, where it is a
+        full-width drawer holding both workbenches — see MobileWorkbench;
+        the width drag strip is not offered there).
       */}
       <div
         ref={panelRef}
         className={clsx(css.panel, !state.panelOpen && css.panelHidden)}
-        style={{ width: narrow ? '100vw' : Math.min(state.width, window.innerWidth) }}
+        style={{ width: narrow ? '100vw' : Math.min(state.width, window.innerWidth), left: narrow ? 0 : sidebarRight }}
         data-dragging={anyDragging || undefined}
       >
           {!narrow && (
@@ -789,7 +801,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
               onPointerMove={(event) => {
                 if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
                 const { startX, startWidth } = widthDrag.current
-                const width = clampWidth(startWidth + (startX - event.clientX))
+                // The strip rides the panel's RIGHT edge: moving right widens.
+                const width = clampWidth(startWidth + (event.clientX - startX))
                 const height = state.bottomOpen ? Math.min(state.bottomHeight, window.innerHeight) : 0
                 scheduleDrag(width, height)
               }}
@@ -798,7 +811,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
                 event.currentTarget.releasePointerCapture(event.pointerId)
                 const { startX, startWidth } = widthDrag.current
                 stopDragScheduling()
-                store.reduce(s => setWidth(s, startWidth + (startX - event.clientX)))
+                store.reduce(s => setWidth(s, startWidth + (event.clientX - startX)))
                 setDraggingWidth(false)
               }}
             />
@@ -833,14 +846,12 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
           left: centerRect.left,
           // Direct from the center column's measured right edge: the bottom
           // panel spans ONLY the center column, ending exactly at the
-          // details column's left edge (the details column sits between the
-          // center and the right panel, and the right panel's margin-right
-          // push is already baked into centerRect.right).
+          // details column's left edge.
           right: window.innerWidth - centerRect.right,
-          // The seam against the open right panel needs its own hairline
-          // (the right panel's border-left alone is covered by this panel's
+          // The seam against the open left panel needs its own hairline
+          // (the panel's border-right alone is covered by this panel's
           // fill — without it the corner looks cut off).
-          borderRight: state.panelOpen ? '1px solid var(--dsw-alias-border-l2)' : undefined,
+          borderLeft: state.panelOpen ? '1px solid var(--dsw-alias-border-l2)' : undefined,
         }}
         data-dragging={(draggingBottom || draggingCorner) || undefined}
       >
@@ -898,8 +909,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       )}
       {/*
         The shared corner (only while BOTH panels are open): the intersection
-        of the right panel's left edge and the bottom panel's top edge.
-        Horizontal drags resize the right panel's width, vertical drags the
+        of the left panel's right edge and the bottom panel's top edge.
+        Horizontal drags resize the left panel's width, vertical drags the
         bottom panel's height — the two panels drag against each other.
         (Never on narrow viewports: the bottom panel does not exist there.)
       */}
@@ -908,7 +919,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
           ref={cornerRef}
           className={css.cornerHandle}
           style={{
-            left: window.innerWidth - state.width - 6,
+            left: sidebarRight + state.width - 6,
             top: window.innerHeight - state.bottomHeight - 6,
           }}
           data-dragging={draggingCorner || undefined}
@@ -926,7 +937,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
           onPointerMove={(event) => {
             if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
             const { startX, startY, startWidth, startHeight } = cornerDrag.current
-            const width = clampWidth(startWidth + (startX - event.clientX))
+            const width = clampWidth(startWidth + (event.clientX - startX))
             const height = clampHeight(startHeight + (startY - event.clientY))
             scheduleDrag(width, height)
           }}
@@ -935,7 +946,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             event.currentTarget.releasePointerCapture(event.pointerId)
             const { startX, startY, startWidth, startHeight } = cornerDrag.current
             stopDragScheduling()
-            store.reduce(s => setBottomHeight(setWidth(s, startWidth + (startX - event.clientX)), startHeight + (startY - event.clientY)))
+            store.reduce(s => setBottomHeight(setWidth(s, startWidth + (event.clientX - startX)), startHeight + (startY - event.clientY)))
             setDraggingCorner(false)
           }}
         />

@@ -20,6 +20,18 @@ export const IconPanelRightOutline16 = ({ size = 16, className }: IconProps) => 
 )
 
 /**
+ * Left-panel toggle glyph (the "侧拉" button): a frame with a filled strip
+ * along its LEFT edge, mirroring IconPanelRightOutline16 for the
+ * left-docked layout.
+ */
+export const IconPanelLeftOutline16 = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1.5" y="2" width="13" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+    <rect x="2.75" y="3.25" width="2.75" height="9.5" rx="1" fill="currentColor" stroke="none" />
+  </svg>
+)
+
+/**
  * Bottom-panel toggle glyph (the "底栏" button): a frame with a filled strip
  * along its BOTTOM edge, in the app's outline style.
  */

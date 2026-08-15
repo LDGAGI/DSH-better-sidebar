@@ -25,12 +25,9 @@
   gap: 4px;
 }
 
-/* The tab strip of the OPEN right panel reserves the cluster's width at its
-   right end, so the tabs and the + menu genuinely yield space to the cluster
-   (never hiding under it). */
-.panel:not(.panelHidden) .tabBar {
-  padding-right: 72px;
-}
+/* The tab strip of the OPEN panel needs no cluster padding: the toggle
+   cluster stays pinned to the viewport's top-right corner while the panel
+   docks left. */
 
 /* The closed-state affordance is the native rail icon control: a plain
    28px circle (the app's icon-button size — the cluster must stay inside
@@ -66,9 +63,11 @@
 .panel {
   position: fixed;
   top: 0;
-  right: 0;
+  /* Left edge is written inline by the Sidebar shell (the app's own left
+     sidebar's right edge), so the panel docks BETWEEN that sidebar and the
+     conversation instead of covering either. */
   /* Full height: the bottom panel squeezes only the center column, so the
-     right panel never gives up any vertical position. */
+     left panel never gives up any vertical position. */
   bottom: 0;
   z-index: 50;
   display: flex;
@@ -76,16 +75,17 @@
   /* The native sidebar surface: bluish-50 over white / bluish-900 over dark,
      exactly like the app's own sidebar column (SidebarRoot .root). */
   background: var(--dsw-specific-sidebar-fill);
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  border-right: 1px solid var(--dsw-alias-border-l2);
   /* Expand/collapse slides the panel; fullscreen animates the width. */
   transition:
     transform var(--ds-transition-duration-slow) var(--ds-ease-in-out),
     width var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-/* Collapsed: slid off-screen, interactive nothing, hidden after the slide. */
+/* Collapsed: slid off-screen to the left, interactive nothing, hidden after
+   the slide. */
 .panelHidden {
-  transform: translateX(102%);
+  transform: translateX(-102%);
   pointer-events: none;
   visibility: hidden;
   transition:
@@ -99,9 +99,11 @@
   transition: none;
 }
 
+/* The width drag strip rides the panel's RIGHT edge (the seam against the
+   conversation). */
 .panelResize {
   position: absolute;
-  left: -4px;
+  right: -4px;
   top: 0;
   bottom: 0;
   width: 8px;
