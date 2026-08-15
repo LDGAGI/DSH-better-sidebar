@@ -720,6 +720,113 @@
   cursor: default;
 }
 
+/* ── Left nav dock (the native sidebar's 会话/目录/Git switcher) ───────── */
+
+/* The dock is a plain div appended to the AppFrame's sidebar column. In
+   sessions mode it is a floating pill at the column's bottom center (the
+   native list keeps rendering behind it); in content modes it becomes an
+   opaque full-column overlay. pointer-events opt-in keeps the pill's
+   surroundings clickable. */
+.leftNavDock {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  pointer-events: none;
+}
+
+/* On the collapsed rail the native icon rail owns the column — the dock
+   hides entirely instead of squeezing three modes into 56px. */
+.leftNavDock[data-rail] {
+  display: none;
+}
+
+.leftNavDock[data-mode='sessions'] {
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+}
+
+.leftNavDock[data-mode='explorer'],
+.leftNavDock[data-mode='git'] {
+  inset: 0;
+  background: var(--dsw-specific-sidebar-fill);
+}
+
+.leftNav {
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.leftNavFull {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* The segmented mode switch: layered pill, hairline border, 6px radius —
+   the same control grammar as the panel's own capsule buttons. */
+.leftNavSwitch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+/* In full-overlay mode the switch stretches across the top as a bar. */
+.leftNavFull .leftNavSwitch {
+  margin: 8px 8px 4px;
+  padding: 0 0 6px;
+  border: none;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 0;
+  background: transparent;
+}
+
+.leftNavMode {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.leftNavMode:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.leftNavModeActive,
+.leftNavModeActive:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.leftNavBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sessionsEmpty {
+  padding: 16px 12px;
+  font: var(--dsw-font-xxs-12);
+  color: var(--dsw-alias-label-tertiary);
+}
+
 /* Mount fade for tree rows (the app's session-row reveal). */
 @keyframes dsh-row-in {
   from { opacity: 0; }

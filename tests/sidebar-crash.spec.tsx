@@ -53,7 +53,9 @@ function mountSidebar(): MountedSidebar {
   document.body.append(container)
   const store = createSidebarStore()
   const service = createBetterSidebarService(store)
-  // Fresh-session seed: the panel starts OPEN (openByDefault default true).
+  // Fresh-session seed: pin the panel OPEN for these tests (the fork's
+  // default is collapsed-on-start).
+  store.setPrefs({ ...store.getPrefs(), openByDefault: true })
   store.setSession('s1')
   // useSyncExternalStore requires STABLE snapshots across calls (the real DSH
   // services return stable objects) — a fresh object per call loops forever.

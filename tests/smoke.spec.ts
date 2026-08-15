@@ -539,7 +539,7 @@ describe('side card settings routes', () => {
     expect(read.ok).toBe(true)
     expect(read.value).toEqual({
       value: {
-        openByDefault: true,
+        openByDefault: false,
         defaultWidthPercent: 30,
         autoOpenSubagent: true,
         autoOpenJobs: true,

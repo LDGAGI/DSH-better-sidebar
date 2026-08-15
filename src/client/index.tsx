@@ -16,6 +16,7 @@ import { createBetterSidebarService, matchUrlTarget } from './service.ts'
 import { resetChunks } from './chunk-loader.ts'
 import { registerBuiltins } from './builtins/index.ts'
 import { Sidebar } from './Sidebar.tsx'
+import { mountLeftNav } from './left-nav.tsx'
 import { RenderBoundary } from './RenderBoundary.tsx'
 import { registerOpenPathInterception, registerTurnTailInterception } from './intercept.tsx'
 import { registerLinkInterception } from './link-intercept.ts'
@@ -125,6 +126,21 @@ export function apply(ctx: Context): void {
         host?.remove()
       }
     }, 'dsh-better-sidebar: sidebar mount')
+
+    // The native left column's 会话/目录/Git switcher: injected into the
+    // AppFrame's sidebar column, disposed with this fiber so the native
+    // sidebar restores exactly on unload/HMR.
+    ctx.effect(
+      () => {
+        try {
+          return mountLeftNav(ctx, sidebarStore)
+        } catch (error) {
+          fail('left nav', error)
+          return undefined
+        }
+      },
+      'dsh-better-sidebar: left nav mount',
+    )
 
     ctx.effect(
       () => {
