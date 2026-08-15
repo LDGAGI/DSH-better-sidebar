@@ -94,38 +94,15 @@ export function apply(ctx: Context): void {
     // registered by a previous fiber (HMR) and drop the in-memory load cache
     // so the next lazy open re-fetches the current chunk scripts.
     resetChunks()
-    ctx.effect(() => {
-      let disposed = false
-      let root: Root | undefined
-      let host: HTMLDivElement | undefined
-      void (async () => {
-        // Resolve the user's side card prefs BEFORE the first session seeds,
-        // so a brand-new conversation opens (or stays closed) at the chosen
-        // width from first paint. A settings route failure falls back to the
-        // schema defaults; the sidebar still mounts (a stalled wire gives up
-        // after the timeout and mounts on the defaults).
-        const prefs = await Promise.race([
-          loadPrefs(api),
-          new Promise<null>(resolve => { const timer = window.setTimeout(() => resolve(null), 2000) }),
-        ])
-        if (prefs !== null) sidebarStore.setPrefs(prefs)
-        if (disposed) return
-        try {
-          host = document.createElement('div')
-          host.setAttribute('data-dsh-better-sidebar', '')
-          document.body.appendChild(host)
-          root = createRoot(host)
-          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore })))
-        } catch (error) {
-          fail('mount', error)
-        }
-      })()
-      return () => {
-        disposed = true
-        root?.unmount()
-        host?.remove()
-      }
-    }, 'dsh-better-sidebar: sidebar mount')
+    // The workbench panel is DISABLED in this fork: the plugin's whole
+    // surface is the native left column (会话/目录/Git, see left-nav.tsx).
+    // Editor/diff/terminal tabs and the bottom panel stay dormant until the
+    // middle editor surface is deliberately reintroduced — the Sidebar
+    // component, store, and service remain intact for that day.
+    void loadPrefs
+    void RenderBoundary
+    void Sidebar
+    void css
 
     // The native left column's 会话/目录/Git switcher: injected into the
     // AppFrame's sidebar column, disposed with this fiber so the native
@@ -142,72 +119,13 @@ export function apply(ctx: Context): void {
       'dsh-better-sidebar: left nav mount',
     )
 
-    ctx.effect(
-      () => {
-        try {
-          return registerTurnTailInterception(ctx, sidebarStore)
-        } catch (error) {
-          fail('interception', error)
-          return undefined
-        }
-      },
-      'dsh-better-sidebar: turn-tail interception',
-    )
-
-    ctx.effect(
-      () => {
-        try {
-          return registerOpenPathInterception(ctx, sidebarStore)
-        } catch (error) {
-          fail('interception', error)
-          return undefined
-        }
-      },
-      'dsh-better-sidebar: open-path interception',
-    )
-
-    ctx.effect(
-      () => {
-        try {
-          // External http(s) links in the chat/GUI open the sidebar instead
-          // of a new window. Gated on the browserInterceptLinks MASTER pref,
-          // the URL's protocol flag (browserInterceptHttp / Https — https
-          // defaults OFF: most https sites refuse iframe embedding), and the
-          // target tab's enable switch; Ctrl/Cmd+click always bypasses. The
-          // target is the first registered tab whose `urlTarget` claims the
-          // URL (enabled tabs only), else the built-in browser tab.
-          const urlTargetOf = (url: URL): string | undefined => {
-            const prefs = sidebarStore.getPrefs()
-            const enabled = service.getTabs().filter(tab => prefs.tabsEnabled[tab.id] !== false)
-            return matchUrlTarget(enabled, url)?.id
-          }
-          return registerLinkInterception({
-            takeoverEnabled: (url) => {
-              const prefs = sidebarStore.getPrefs()
-              if (prefs.browserInterceptLinks === false) return false
-              const protocolOn = url.protocol === 'https:'
-                ? prefs.browserInterceptHttps !== false
-                : prefs.browserInterceptHttp !== false
-              if (!protocolOn) return false
-              // A plugin claim is the target (already enabled-filtered);
-              // otherwise the built-in browser must be enabled.
-              return urlTargetOf(url) !== undefined || prefs.tabsEnabled['browser'] !== false
-            },
-            openInSidebar: (url) => {
-              let title: string | undefined
-              try { title = new URL(url).hostname } catch { /* keep the default title */ }
-              const type = urlTargetOf(new URL(url)) ?? 'browser'
-              ctx.betterSidebar?.openTab({ type, url, title })
-            },
-            selfOrigin: window.location.origin,
-          })
-        } catch (error) {
-          fail('interception', error)
-          return undefined
-        }
-      },
-      'dsh-better-sidebar: link interception',
-    )
+    // The panel-driven interceptions (turn-tail produced files, chat
+    // file-open funnel, external link takeover) are disabled with the panel:
+    // without a workbench to land tabs in, they would resurrect it.
+    void registerTurnTailInterception
+    void registerOpenPathInterception
+    void registerLinkInterception
+    void matchUrlTarget
 
     // The IME guard: composition keys (candidate arrows, confirm, cancel)
     // belong to the input method, never to page JS. Inlined third-party UI

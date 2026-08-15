@@ -24,10 +24,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import clsx from 'clsx'
 import { IconBranchOutline16, IconFolderOpen16, IconNewChatOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
-import { togglePanel, type SidebarStore, type SidebarTab } from './state.ts'
+import type { SidebarStore, SidebarTab } from './state.ts'
 import { ExplorerView } from './ExplorerView.tsx'
 import { GitView } from './GitView.tsx'
-import { openSidebarFile } from './intercept.tsx'
 import { appendToDraft } from './conversation-draft.ts'
 import { relativeTo } from './paths.ts'
 import { t } from './locales.ts'
@@ -78,25 +77,19 @@ function LeftNav(props: { ctx: Context; store: SidebarStore; dock: HTMLElement }
     try { localStorage.setItem(MODE_KEY, next) } catch { /* storage unavailable */ }
   }
 
-  /** A content open must never land out of sight: expand the workbench. */
-  const ensurePanel = (): void => {
-    const state = store.getSnapshot().state
-    if (state !== undefined && !state.panelOpen) store.reduce(togglePanel)
-  }
-
-  const openFile = (path: string): void => {
-    if (sessionId === undefined) return
-    openSidebarFile(ctx, store, sessionId, path)
-    ensurePanel()
-  }
+  // Preview/edit is a HIDDEN capability in this fork (the workbench panel
+  // is disabled): file and diff clicks stay inert for now. The tree keeps
+  // browsing and @-referencing; the open wiring returns with the future
+  // editor surface. The parameters stay named so the call sites document
+  // the intended wiring.
+  const openFile = (_path: string): void => { /* hidden: no editor surface */ }
   const referenceFile = (path: string): void => {
     if (sessionId === undefined || cwd === undefined) return
     appendToDraft(ctx, sessionId, `@${relativeTo(cwd, path)}`)
   }
-  const openDiff = (tab: SidebarTab): void => {
-    ctx.betterSidebar?.openTab({ type: 'diff', id: tab.id, title: tab.title, diff: tab.diff })
-    ensurePanel()
-  }
+  const openDiff = (_tab: SidebarTab): void => { /* hidden: no editor surface */ }
+  // The store stays in the props contract for the day the panel returns.
+  void store
   const toggleDir = (path: string): void => {
     setExpanded(prev => (prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path]))
   }
