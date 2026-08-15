@@ -10,31 +10,16 @@
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 
-/* The persistent expand/collapse cluster at the top-right corner: two rail
-   controls side by side (bottom panel's glyph LEFT of the right panel's).
-   Always pinned to the viewport corner — inside the right panel's top-right
-   while it is open, sitting flush in the 34px tab strip (28px buttons at
-   top: 3) whose right end it really squeezes. */
-.toggleCluster {
-  position: fixed;
+/* In-panel chrome at the tab strip's right end (the old viewport-corner
+   toggle cluster is gone — the workbench opens on demand through content
+   opens): the bottom panel's toggle and the panel's own collapse button,
+   plain 28px circles like the app's icon buttons, transparent fill,
+   secondary ink; hover raises the fill. */
+.panelBottomToggle,
+.panelClose {
+  position: absolute;
   top: 3px;
-  right: 10px;
-  z-index: 55;
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-}
-
-/* The tab strip of the OPEN panel needs no cluster padding: the toggle
-   cluster stays pinned to the viewport's top-right corner while the panel
-   docks left. */
-
-/* The closed-state affordance is the native rail icon control: a plain
-   28px circle (the app's icon-button size — the cluster must stay inside
-   the 34px tab-strip band so it never covers the pane headers below),
-   transparent fill, secondary ink; hover raises the fill. No border, no
-   shadow — the icon alone is the affordance. */
-.toggleButton {
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,14 +35,25 @@
     color var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-.toggleButton:hover:not(:disabled) {
+.panelBottomToggle:hover,
+.panelClose:hover {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
 }
 
-.toggleButton:disabled {
-  opacity: 0.4;
-  cursor: default;
+.panelClose {
+  right: 6px;
+}
+
+.panelBottomToggle {
+  right: 38px;
+}
+
+/* The tab strip of the OPEN panel reserves the chrome's width at its right
+   end, so the tabs and the + menu genuinely yield space (never hiding under
+   the buttons). */
+.panel:not(.panelHidden) .tabBar {
+  padding-right: 72px;
 }
 
 .panel {
@@ -223,10 +219,6 @@
    (`--dsh-title-bar-strip`, written by the Sidebar shell from
    `titleBarStripPx`; 40px fallback). The bottom panel is unaffected: it
    sits at the window's bottom, never under the top strip. */
-:global(body[data-dsh-title-bar-compat]) .toggleCluster {
-  top: calc(var(--dsh-title-bar-strip, 40px) + 3px);
-}
-
 :global(body[data-dsh-title-bar-compat]) .panel {
   /* The caption strip is drawn over the panel's own top edge: keep the
      surface full-height and push the content (the tab strip) below the
@@ -1865,7 +1857,8 @@
 
 /* Keyboard focus stays visible on every interactive control (the styling
    policy requires focus visibility; the accent token doubles as the ring). */
-.toggleButton:focus-visible,
+.panelBottomToggle:focus-visible,
+.panelClose:focus-visible,
 .bottomClose:focus-visible,
 .iconButton:focus-visible,
 .tab:focus-visible,
@@ -1895,8 +1888,6 @@
   .panelHidden,
   .bottomPanel,
   .bottomPanelHidden,
-  .toggleCluster,
-  .toggleButton,
   .tab,
   .tabBarPlus,
   .paneCard,

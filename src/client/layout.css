@@ -36,17 +36,6 @@
     margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-/* The toggle cluster is pinned to the viewport's top-right corner
-   PERMANENTLY (the panel itself docks left), so the DSH session header's
-   right padding always yields the corner instead of hiding its utilities
-   (the "Session log" download capsule) under the cluster. Anchor on the
-   header's slot host wrapper ([data-slot="conversation.session.header"])
-   rather than a positional path: DSH 0.1.x nests the header several levels
-   under the center column. */
-body [data-slot="conversation.session.header"] > header {
-  padding-right: 78px;
-}
-
 body[data-dsh-sidebar-dragging] #root > div[data-slot="root"] > div > div:nth-child(2) {
   transition: none;
 }

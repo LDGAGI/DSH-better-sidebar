@@ -37,7 +37,7 @@ import {
   resizeSplitIn, setBottomHeight, setWidth, toggleBottomPanel, toggleExpanded, togglePanel,
   type DropZone, type SidebarState, type SidebarStore, type SidebarTab, type SplitNode,
 } from './state.ts'
-import { IconPanelBottomOutline16, IconPanelLeftOutline16 } from './icons.tsx'
+import { IconPanelBottomOutline16 } from './icons.tsx'
 import { Workbench, type WorkbenchActions } from './split-pane.tsx'
 import { useNarrowViewport } from './breakpoints.ts'
 import type { NewTabOption } from './TabBar.tsx'
@@ -154,18 +154,6 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   const state = snapshot.state
   const sessionId = snapshot.sessionId
   const summaryCwd = sessionId === undefined ? undefined : sessionList.byId[sessionId]?.cwd
-
-  // The collapsed toggle cluster reclaims the top-right corner, so the DSH
-  // session header's right-aligned utilities (the "Session log" download
-  // capsule) must yield. layout.css keys off this body attribute to push the
-  // header's right padding out past the cluster. Only the CLOSED panel needs
-  // it — an open panel already squeezes `#root` left, moving the header clear.
-  const collapsed = state === undefined || !state.panelOpen
-  useEffect(() => {
-    if (collapsed) document.body.setAttribute('data-dsh-sidebar-collapsed', '')
-    else document.body.removeAttribute('data-dsh-sidebar-collapsed')
-    return () => { document.body.removeAttribute('data-dsh-sidebar-collapsed') }
-  }, [collapsed])
 
   // Position compatibility mode (titleBarCompat pref): Windows frameless
   // windows draw the native title bar (minimize/maximize/close) at the
@@ -652,22 +640,9 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   }, [ctx, sessionId, cwd])
 
   if (state === undefined || sessionId === undefined) {
-    return (
-      <div className={css.toggleCluster}>
-        {!narrow && (
-          <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
-            <button type="button" className={css.toggleButton} disabled aria-label={t('noSession')}>
-              <IconPanelBottomOutline16 />
-            </button>
-          </Tooltip>
-        )}
-        <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
-          <button type="button" className={css.toggleButton} disabled aria-label={t('noSession')}>
-            <IconPanelLeftOutline16 />
-          </button>
-        </Tooltip>
-      </div>
-    )
+    // No toggle cluster anymore (the workbench opens on demand through
+    // content opens) — without a session there is nothing to render.
+    return null
   }
 
   const onNewTab = (optionId: string): void => {
@@ -739,42 +714,6 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   return (
     <>
       {/*
-        The persistent toggle cluster at the top-right corner: the bottom
-        panel's button (bottom glyph) LEFT of the right panel's (side glyph).
-        Always pinned to the viewport corner — inside the right panel's
-        top-right while it is open, sitting flush in the tab strip whose
-        right end it really squeezes (the strip reserves its width via CSS),
-        so the tabs genuinely yield space to it.
-      */}
-      <div className={css.toggleCluster}>
-        {/*
-          Narrow viewports merge the two workbenches into the one drawer —
-          there is no bottom panel, so its toggle button is not offered.
-        */}
-        {!narrow && (
-          <Tooltip label={state.bottomOpen ? t('collapseBottomPanel') : t('expandBottomPanel')} side="bottom" delayMs={500}>
-            <button
-              type="button"
-              className={css.toggleButton}
-              aria-label={state.bottomOpen ? t('collapseBottomPanel') : t('expandBottomPanel')}
-              onClick={() => { store.reduce(toggleBottomPanel) }}
-            >
-              <IconPanelBottomOutline16 />
-            </button>
-          </Tooltip>
-        )}
-        <Tooltip label={state.panelOpen ? t('collapse') : t('expand')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={css.toggleButton}
-            aria-label={state.panelOpen ? t('collapse') : t('expand')}
-            onClick={() => { store.reduce(togglePanel) }}
-          >
-            <IconPanelLeftOutline16 />
-          </button>
-        </Tooltip>
-      </div>
-      {/*
         The left panel stays mounted while collapsed (hidden off-screen) so
         the slide in/out can animate; visibility hides it after the slide
         settles. It docks BETWEEN the app's own left sidebar and the
@@ -816,6 +755,34 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
               }}
             />
           )}
+        {/*
+          In-panel chrome at the tab strip's right end (the old viewport-corner
+          toggle cluster is gone): the bottom panel's toggle — desktop only,
+          narrow merges the workbenches into one drawer — and the panel's own
+          collapse button. The strip reserves their width via CSS.
+        */}
+        {!narrow && (
+          <Tooltip label={state.bottomOpen ? t('collapseBottomPanel') : t('expandBottomPanel')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.panelBottomToggle}
+              aria-label={state.bottomOpen ? t('collapseBottomPanel') : t('expandBottomPanel')}
+              onClick={() => { store.reduce(toggleBottomPanel) }}
+            >
+              <IconPanelBottomOutline16 />
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip label={t('collapse')} side="bottom" delayMs={500}>
+          <button
+            type="button"
+            className={css.panelClose}
+            aria-label={t('collapse')}
+            onClick={() => { store.reduce(togglePanel) }}
+          >
+            <IconCloseFill14 />
+          </button>
+        </Tooltip>
         <div className={css.panelBody}>
           <Workbench
             state={state}
