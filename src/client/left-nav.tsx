@@ -164,10 +164,37 @@ export function mountLeftNav(ctx: Context, store: SidebarStore): () => void {
   let regionObserver: ResizeObserver | undefined
   let watcher: MutationObserver | undefined
 
-  /** Glue the dock to the reserved strip + the region's rect. */
+  /** The region's REAL box: the slot host itself can be display:contents
+   *  (probe-measured 0×0 while its content renders fine), so a zero host
+   *  rect falls back to its first element child — the WorkspaceBrowser's
+   *  own root, which always has a real box. */
+  const measureRegion = (host: HTMLElement): DOMRect => {
+    const rect = host.getBoundingClientRect()
+    if (rect.width > 0 || rect.height > 0) return rect
+    const child = host.firstElementChild as HTMLElement | null
+    return child !== null ? child.getBoundingClientRect() : rect
+  }
+
+  /** Glue the dock to the reserved strip + the region's rect. The region
+   *  host is RE-QUERIED on every update: React replaces it across the boot
+   *  settle, rail transitions and session switches, and a stale reference
+   *  measures as 0-wide forever (which previously parked the dock in the
+   *  hidden "rail" state permanently). The observer follows the live node. */
   const updateRect = (): void => {
-    if (dock === undefined || region === undefined || column === undefined) return
-    const rect = region.getBoundingClientRect()
+    if (dock === undefined || column === undefined) return
+    const host = document.querySelector('#root [data-slot="sidebar.workspaces"]') as HTMLElement | null
+    if (host === null) {
+      dock.style.display = 'none'
+      return
+    }
+    dock.style.display = ''
+    if (region !== host) {
+      region = host
+      regionObserver?.disconnect()
+      regionObserver = new ResizeObserver(updateRect)
+      regionObserver.observe(host)
+    }
+    const rect = measureRegion(host)
     const colRect = column.getBoundingClientRect()
     dock.style.left = `${rect.left - colRect.left}px`
     dock.style.top = `${rect.top - colRect.top - SWITCH_STRIP}px`
@@ -224,10 +251,14 @@ export function mountLeftNav(ctx: Context, store: SidebarStore): () => void {
   })
   const rootEl = document.getElementById('root')
   if (rootEl !== null) watcher.observe(rootEl, { childList: true, subtree: true })
+  // Rect positions (not just sizes) shift with the viewport; the region's
+  // ResizeObserver alone cannot see pure position changes.
+  window.addEventListener('resize', updateRect)
 
   return () => {
     disposed = true
     watcher?.disconnect()
+    window.removeEventListener('resize', updateRect)
     teardown()
   }
 }

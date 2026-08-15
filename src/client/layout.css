@@ -40,9 +40,10 @@
    the workspaces region drops 38px while a compensating negative bottom
    margin keeps the column's total height (and the native footer) exactly
    where it was — net layout shift is zero, so the left-nav switcher has a
-   fixed home in every mode. Anchored on the official slot host, never on a
+   fixed home in every mode. The rule targets the slot host's CONTENT (the
+   host itself can be display:contents, where margins are inert), never a
    native class. */
-#root [data-slot="sidebar.workspaces"] {
+#root [data-slot="sidebar.workspaces"] > * {
   margin-top: 38px !important;
   margin-bottom: -38px !important;
 }
