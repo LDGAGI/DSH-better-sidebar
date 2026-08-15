@@ -12,6 +12,11 @@
 /** The zh dictionary (also registered into the DSH locale registry under {@link LOCALE_NS}). */
 export const zh = {
   explorer: '资源管理器',
+  sessions: '会话',
+  newSession: '新会话',
+  noSessions: '暂无会话',
+  unknownWorkspace: '未分组',
+  sessionRunning: '运行中',
   git: '源代码管理',
   terminal: '终端',
   editor: '编辑器',
@@ -233,6 +238,11 @@ export const zh = {
 /** The en dictionary (key-set-equal to zh, enforced by the type annotation). */
 export const en: Record<keyof typeof zh, string> = {
   explorer: 'Explorer',
+  sessions: 'Sessions',
+  newSession: 'New session',
+  noSessions: 'No sessions yet',
+  unknownWorkspace: 'Ungrouped',
+  sessionRunning: 'Running',
   git: 'Source Control',
   terminal: 'Terminal',
   editor: 'Editor',

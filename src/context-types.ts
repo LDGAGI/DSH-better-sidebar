@@ -341,6 +341,8 @@ export interface SidebarConversation {
 export interface SidebarWorkspacesService {
   /** Open a filesystem path with the Host operating system's default application. */
   openPath(path: string): Promise<void>
+  /** Start a fresh session in a workspace (mirror of the runtime IWorkspaces.startSession). */
+  startSession?(workspaceId?: string): void
 }
 
 /**

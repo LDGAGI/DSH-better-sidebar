@@ -6,7 +6,7 @@
  * and mints `terminal:<n>` ids through `createTab`; the browser mints
  * `browser:<n>` the same way (no quota).
  */
-import { IconBranchOutline16, IconCodeOutline16, IconFolderOpen16, IconThinkOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconBranchOutline16, IconCodeOutline16, IconFolderOpen16, IconNewChatOutline16, IconThinkOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../../context-types.ts'
 import { allLeaves, isAgentTabId, type SidebarState } from '../state.ts'
 import { t } from '../locales.ts'
@@ -15,6 +15,7 @@ import { ExplorerView } from '../ExplorerView.tsx'
 import { EditorHost } from '../EditorHost.tsx'
 import { lazyChunkComponent } from '../lazy-chunk.tsx'
 import { GitView } from '../GitView.tsx'
+import { SessionsView } from '../SessionsView.tsx'
 import { DiffTab } from '../DiffTab.tsx'
 import { SubagentView } from '../SubagentView.tsx'
 import { BrowserView } from '../BrowserView.tsx'
@@ -72,6 +73,14 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
       component: ({ ctx, store, scope, tab }) => (
         <EditorHost ctx={ctx} store={store} scope={scope} path={tab.path ?? ''} title={tab.title} />
       ),
+    },
+    {
+      id: 'sessions',
+      title: () => t('sessions'),
+      icon: (size: number) => <IconNewChatOutline16 size={size} />,
+      order: 5,
+      single: true,
+      component: ({ ctx }) => <SessionsView ctx={ctx} />,
     },
     {
       id: 'explorer',
