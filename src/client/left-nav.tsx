@@ -78,19 +78,27 @@ function LeftNav(props: { ctx: Context; store: SidebarStore }) {
     try { localStorage.setItem(MODE_KEY, next) } catch { /* storage unavailable */ }
   }
 
-  // Preview/edit is a HIDDEN capability in this fork (the workbench panel
-  // is disabled): file and diff clicks stay inert for now. The tree keeps
-  // browsing and @-referencing; the open wiring returns with the future
-  // editor surface. The parameters stay named so the call sites document
-  // the intended wiring.
-  const openFile = (_path: string): void => { /* hidden: no editor surface */ }
+  // Directory and Git content share the same document-opening service as
+  // chat links and produced files. The service owns dedupe, placement,
+  // per-session state and automatic workbench reveal.
+  const openFile = (path: string): void => {
+    if (scope === undefined) return
+    ctx.betterSidebar?.openFile(scope, path)
+  }
   const referenceFile = (path: string): void => {
     if (sessionId === undefined || cwd === undefined) return
     appendToDraft(ctx, sessionId, `@${relativeTo(cwd, path)}`)
   }
-  const openDiff = (_tab: SidebarTab): void => { /* hidden: no editor surface */ }
-  // The store stays in the props contract for the day the panel returns.
-  void store
+  const openDiff = (tab: SidebarTab): void => {
+    if (scope === undefined) return
+    ctx.betterSidebar?.openTab({
+      type: 'diff',
+      id: tab.id,
+      title: tab.title,
+      path: tab.path,
+      diff: tab.diff,
+    }, scope)
+  }
 
   const toggleDir = (path: string): void => {
     setExpanded(prev => (prev.includes(path) ? prev.filter(item => item !== path) : [...prev, path]))

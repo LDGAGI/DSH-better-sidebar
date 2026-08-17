@@ -37,7 +37,7 @@ const WORKSPACE_PATH = process.env.DSH_E2E_WORKSPACE ?? join(tmpdir(), 'dsh-e2e-
 
 /** A file seeded into the workspace, opened through the Explorer to force the
  *  lazily-packed editor chunk (client-editor.js) to load. */
-const SEEDED_FILE = 'hello.txt'
+const SEEDED_FILE = 'hello.md'
 
 /**
  * The plugin's crash markers. The client mounts inside an error boundary that
@@ -55,7 +55,7 @@ let api: APIRequestContext
  *  through the host's unary RPC surface. */
 async function seedSession(): Promise<void> {
   mkdirSync(WORKSPACE_PATH, { recursive: true })
-  writeFileSync(join(WORKSPACE_PATH, SEEDED_FILE), 'hello from the mount lane\n')
+  writeFileSync(join(WORKSPACE_PATH, SEEDED_FILE), '# Mount lane\n\nHello from the writing workbench.\n')
   const workspace = await api.post(`${BASE_URL}/api/workspace.create`, {
     data: { type: 'client-request', rpcId: 'e2e-workspace', method: 'workspace.create', payload: { path: WORKSPACE_PATH } },
   })
@@ -134,6 +134,19 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
   const tabBar = sidebar.locator('[title]')
   await expect(tabBar.first()).toBeAttached({ timeout: 90_000 })
 
+  // The workbench intentionally starts collapsed in a fresh profile. Open the
+  // seeded Markdown through the persistent left Explorer: this is the real
+  // user entry point and must expand the middle panel, fetch the editor chunk,
+  // and hydrate Tiptap before the built-in tab sweep begins.
+  const leftNav = page.locator('[data-dsh-left-nav]')
+  await expect(leftNav).toBeAttached({ timeout: 30_000 })
+  await leftNav.getByRole('tab', { name: 'Explorer', exact: true }).click()
+  const leftFileRow = leftNav.locator(`[role="button"][title$="${SEEDED_FILE}"]`)
+  await expect(leftFileRow, `the seeded "${SEEDED_FILE}" file must appear in the left Explorer`).toHaveCount(1, { timeout: 30_000 })
+  await leftFileRow.getByText(SEEDED_FILE, { exact: true }).click()
+  await expect(sidebar.getByRole('button', { name: 'Writing', exact: true })).toBeVisible({ timeout: 30_000 })
+  await expect(sidebar.locator('.ProseMirror')).toContainText('Mount lane', { timeout: 30_000 })
+
   // Crash-marker assertions shared by every step.
   const assertNoCrash = async (): Promise<void> => {
     await expect
@@ -169,22 +182,17 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
     await assertNoCrash()
   }
 
-  // The editor tab is hidden from the + menu — its CodeMirror chunk
-  // (client-editor.js) only loads when a file is opened. Exercise that path
-  // explicitly: reopen Explorer, open the seeded file, and require the chunk
-  // round-trip, so a missing/corrupt editor chunk fails the lane.
+  // The editor tab is hidden from the + menu. Reopen the workbench Explorer
+  // and the same file to verify the cached editor chunk and path dedupe remain
+  // healthy after every built-in surface has mounted.
   await newTabButton.click()
   const explorerItem = page.getByRole('menuitem', { name: 'Explorer' }).first()
-  await expect(explorerItem, 'Explorer must be re-openable for the editor-chunk probe').toHaveCount(1)
+  await expect(explorerItem, 'Explorer must be re-openable after the tab sweep').toHaveCount(1)
   await explorerItem.click()
-  const editorChunk = page.waitForResponse(
-    (response) => response.url().includes('/sidebar/bundle/editor.js'),
-    { timeout: 30_000 },
-  )
   const fileRow = sidebar.locator(`[role="button"][title$="${SEEDED_FILE}"]`)
   await expect(fileRow, `the seeded "${SEEDED_FILE}" file must appear in the Explorer tree`).toHaveCount(1, { timeout: 30_000 })
-  await fileRow.click()
-  await editorChunk
+  await fileRow.getByText(SEEDED_FILE, { exact: true }).click()
+  await expect(sidebar.getByRole('button', { name: 'Writing', exact: true })).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(1_500)
   await assertNoCrash()
 

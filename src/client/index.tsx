@@ -94,15 +94,40 @@ export function apply(ctx: Context): void {
     // registered by a previous fiber (HMR) and drop the in-memory load cache
     // so the next lazy open re-fetches the current chunk scripts.
     resetChunks()
-    // The workbench panel is DISABLED in this fork: the plugin's whole
-    // surface is the native left column (会话/目录/Git, see left-nav.tsx).
-    // Editor/diff/terminal tabs and the bottom panel stay dormant until the
-    // middle editor surface is deliberately reintroduced — the Sidebar
-    // component, store, and service remain intact for that day.
-    void loadPrefs
-    void RenderBoundary
-    void Sidebar
-    void css
+    ctx.effect(() => {
+      let disposed = false
+      let root: Root | undefined
+      let host: HTMLDivElement | undefined
+      let timeoutId: number | undefined
+      void (async () => {
+        const timeout = new Promise<null>(resolve => {
+          timeoutId = window.setTimeout(() => resolve(null), 2000)
+        })
+        const prefs = await Promise.race([loadPrefs(api).catch(() => null), timeout])
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+        if (prefs !== null) sidebarStore.setPrefs(prefs)
+        if (disposed) return
+        try {
+          host = document.createElement('div')
+          host.setAttribute('data-dsh-better-sidebar', '')
+          document.body.appendChild(host)
+          root = createRoot(host)
+          root.render(createElement(
+            RenderBoundary,
+            { className: css.boundaryError },
+            createElement(Sidebar, { ctx, store: sidebarStore }),
+          ))
+        } catch (error) {
+          fail('mount', error)
+        }
+      })()
+      return () => {
+        disposed = true
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+        root?.unmount()
+        host?.remove()
+      }
+    }, 'dsh-better-sidebar: workbench mount')
 
     // The native left column's 会话/目录/Git switcher: injected into the
     // AppFrame's sidebar column, disposed with this fiber so the native
@@ -119,13 +144,62 @@ export function apply(ctx: Context): void {
       'dsh-better-sidebar: left nav mount',
     )
 
-    // The panel-driven interceptions (turn-tail produced files, chat
-    // file-open funnel, external link takeover) are disabled with the panel:
-    // without a workbench to land tabs in, they would resurrect it.
-    void registerTurnTailInterception
-    void registerOpenPathInterception
-    void registerLinkInterception
-    void matchUrlTarget
+    ctx.effect(
+      () => {
+        try {
+          return registerTurnTailInterception(ctx, sidebarStore)
+        } catch (error) {
+          fail('turn-tail interception', error)
+          return undefined
+        }
+      },
+      'dsh-better-sidebar: turn-tail interception',
+    )
+
+    ctx.effect(
+      () => {
+        try {
+          return registerOpenPathInterception(ctx, sidebarStore)
+        } catch (error) {
+          fail('open-path interception', error)
+          return undefined
+        }
+      },
+      'dsh-better-sidebar: open-path interception',
+    )
+
+    ctx.effect(
+      () => {
+        try {
+          const urlTargetOf = (url: URL): string | undefined => {
+            const prefs = sidebarStore.getPrefs()
+            const enabled = service.getTabs().filter(tab => prefs.tabsEnabled[tab.id] !== false)
+            return matchUrlTarget(enabled, url)?.id
+          }
+          return registerLinkInterception({
+            takeoverEnabled: (url) => {
+              const prefs = sidebarStore.getPrefs()
+              if (prefs.browserInterceptLinks === false) return false
+              const protocolOn = url.protocol === 'https:'
+                ? prefs.browserInterceptHttps !== false
+                : prefs.browserInterceptHttp !== false
+              if (!protocolOn) return false
+              return urlTargetOf(url) !== undefined || prefs.tabsEnabled['browser'] !== false
+            },
+            openInSidebar: (url) => {
+              const parsed = new URL(url)
+              const type = urlTargetOf(parsed) ?? 'browser'
+              ctx.betterSidebar?.openTab({ type, url, title: parsed.hostname })
+            },
+            selfOrigin: window.location.origin,
+          })
+        } catch (error) {
+          fail('link interception', error)
+          return undefined
+        }
+      },
+      'dsh-better-sidebar: link interception',
+    )
 
     // The IME guard: composition keys (candidate arrows, confirm, cancel)
     // belong to the input method, never to page JS. Inlined third-party UI

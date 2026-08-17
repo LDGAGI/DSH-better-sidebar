@@ -104,8 +104,10 @@ describe('HTML preview iframe sandbox', () => {
     })))
     expect(html).not.toContain('<iframe')
     expect(html).not.toContain('/sidebar/html/')
-    // The markdown is rendered into markup, not framed.
-    expect(html).toContain('<h1')
+    // The Markdown document belongs to the native Writing/Source surface;
+    // Tiptap hydrates after this server render rather than using an iframe.
+    expect(html).toContain('写作')
+    expect(html).toContain('源码')
   })
 })
 

@@ -15,8 +15,10 @@ import clsx from 'clsx'
 import { EditorState } from '@codemirror/state'
 import { EditorView as CodeMirrorView, keymap, lineNumbers } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { IconCheckOutline16, MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { api, htmlUrl } from './api.ts'
+import { WritingEditor } from './WritingEditor.tsx'
+import { supportsVisualMarkdown } from './markdown-visual.ts'
 import { languageForPath } from './lang.ts'
 import { cmSurfaceTheme, CmThemeCompartment } from './cm-themes.ts'
 import { isDarkScheme, subscribeColorScheme } from './theme.ts'
@@ -48,14 +50,20 @@ export const HTML_IFRAME_SANDBOX = 'allow-scripts allow-popups allow-downloads a
 
 export function TextEditor(props: FileViewerProps) {
   const { ctx, scope, path, viewerId, content, truncated } = props
-  const [mode, setMode] = useState<ViewMode>('preview')
+  const markdown = viewerId === 'markdown'
+  const html = viewerId === 'html'
+  const initialVisualSupported = !markdown || supportsVisualMarkdown(content ?? '')
+  const [mode, setMode] = useState<ViewMode>(() => initialVisualSupported ? 'preview' : 'edit')
   /** The editor's current text (null while clean); preview renders this. */
   const [draft, setDraft] = useState<string | null>(null)
+  const visualSupported = !markdown || supportsVisualMarkdown(draft ?? content ?? '')
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<CodeMirrorView | null>(null)
   const savingRef = useRef(false)
+  /** Suppresses CodeMirror's change listener during visual-to-source sync. */
+  const syncingSourceRef = useRef(false)
   /** The theme compartment of the current view (reconfigured on scheme flip). */
   const themeCompRef = useRef<CmThemeCompartment | null>(null)
   /** The app's resolved color scheme; the editor re-themes in place on flips. */
@@ -93,9 +101,10 @@ export function TextEditor(props: FileViewerProps) {
 
   useEffect(() => subscribeColorScheme(() => { setDark(isDarkScheme()) }), [])
 
-  // A new file (tab switch) starts clean: fresh preview mode, no draft.
+  // A new file starts clean. Unsupported Markdown opens in source mode so a
+  // visual round trip can never discard syntax the first schema cannot own.
   useEffect(() => {
-    setMode('preview')
+    setMode(!markdown || supportsVisualMarkdown(content ?? '') ? 'preview' : 'edit')
     setDraft(null)
     setDirty(false)
     setSaveState('idle')
@@ -127,7 +136,7 @@ export function TextEditor(props: FileViewerProps) {
         themeComp.of(dark),
         ...(language !== null ? [language] : []),
         CodeMirrorView.updateListener.of((update) => {
-          if (update.docChanged) {
+          if (update.docChanged && !syncingSourceRef.current) {
             setDraft(update.state.doc.toString())
             setDirty(true)
           }
@@ -207,22 +216,32 @@ export function TextEditor(props: FileViewerProps) {
     view.dispatch({ effects: themeComp.reconfigure(dark) })
   }, [dark])
 
-  // The editor may have been display:none while previewing; re-measure when
-  // it becomes visible again (CodeMirror sizes itself on reveal). A mode
-  // flip also invalidates any anchored selection popup.
+  // The editor may have been display:none while previewing; synchronize the
+  // visual Markdown draft into CodeMirror before reveal, then re-measure. A
+  // mode flip also invalidates any anchored selection popup.
   useEffect(() => {
     hidePopup()
-    if (mode === 'edit') viewRef.current?.requestMeasure()
-  }, [mode])
+    if (mode !== 'edit') return
+    const view = viewRef.current
+    if (view === null) return
+    const source = draft ?? content ?? ''
+    if (view.state.doc.toString() !== source) {
+      syncingSourceRef.current = true
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source } })
+      syncingSourceRef.current = false
+    }
+    view.requestMeasure()
+  }, [mode, draft, content])
 
   const save = (): void => {
     const view = viewRef.current
-    if (view === null || savingRef.current) return
+    if (view === null || savingRef.current || truncated === true) return
+    const next = draft ?? view.state.doc.toString()
     savingRef.current = true
     setSaveState('saving')
-    api.fsWrite(scope, path, view.state.doc.toString()).then(() => {
+    api.fsWrite(scope, path, next).then(() => {
       savingRef.current = false
-      setDraft(null)
+      setDraft(next)
       setDirty(false)
       setSaveState('saved')
     }).catch(() => {
@@ -230,9 +249,6 @@ export function TextEditor(props: FileViewerProps) {
       setSaveState('failed')
     })
   }
-
-  const markdown = viewerId === 'markdown'
-  const html = viewerId === 'html'
 
   /**
    * Selection popup for the markdown preview: a mouse-up inside the preview
@@ -281,21 +297,21 @@ export function TextEditor(props: FileViewerProps) {
   return (
     <>
       <div className={css.editorHeader}>
-        {(markdown || html) && (
+        {(html || (markdown && visualSupported)) && (
           <div className={css.editorModeToggle}>
             <button
               type="button"
               className={clsx(css.editorModeButton, mode === 'preview' && css.editorModeActive)}
               onClick={() => { setMode('preview') }}
             >
-              {t('preview')}
+              {markdown ? t('writing') : t('preview')}
             </button>
             <button
               type="button"
               className={clsx(css.editorModeButton, mode === 'edit' && css.editorModeActive)}
               onClick={() => { setMode('edit') }}
             >
-              {t('edit')}
+              {markdown ? t('source') : t('edit')}
             </button>
           </div>
         )}
@@ -306,6 +322,7 @@ export function TextEditor(props: FileViewerProps) {
             className={css.iconButton}
             aria-label={t('save')}
             title={`${t('save')} (Ctrl/Cmd+S)`}
+            disabled={truncated === true}
             onClick={save}
           >
             <IconCheckOutline16 />
@@ -316,27 +333,28 @@ export function TextEditor(props: FileViewerProps) {
       {editable && (
         <>
           {truncated === true && mode === 'edit' && <div className={css.editorBanner}>{t('truncation')}</div>}
+          {markdown && !visualSupported && <div className={css.editorBanner}>{t('visualUnsupported')}</div>}
           <div
             className={clsx(css.editorCm, (markdown || html) && mode === 'preview' && css.editorCmHidden)}
             ref={hostRef}
           />
         </>
       )}
-      {markdown && mode === 'preview' && (
+      {markdown && visualSupported && mode === 'preview' && (
         <div
           className={css.editorMd}
           ref={mdRef}
           onMouseUp={handlePreviewMouseUp}
           onScroll={hidePopup}
         >
-          {/* The fence copy-button labels must come from this plugin's own
-              dictionary: the DSH MarkdownText/CodeBlock are cordis-free and
-              fall back to hardcoded Chinese otherwise (same pattern as the
-              chat's AssistantMarkdown). Render-time t() keeps them following
-              the active locale on live switches. */}
-          <MarkdownText
-            text={draft ?? content ?? ''}
-            codeLabels={{ copyLabel: t('copy'), copiedLabel: t('copied') }}
+          <WritingEditor
+            value={draft ?? content ?? ''}
+            onSave={save}
+            onChange={(next) => {
+              setDraft(next)
+              setDirty(next !== content)
+              setSaveState('idle')
+            }}
           />
         </div>
       )}

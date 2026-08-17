@@ -8,6 +8,10 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import * as React from 'react'
+import * as ReactJsxRuntime from 'react/jsx-runtime'
+import * as ReactDom from 'react-dom'
+import * as ReactDomClient from 'react-dom/client'
 // Browser globals first: chunk bodies probe `self`/`document` at evaluation
 // (xterm's UMD wrapper, CodeMirror's UA probe).
 import './browser-globals.ts'
@@ -31,7 +35,16 @@ describe('built chunk artifacts', () => {
 
   it('each chunk factory materializes through a require over the platform externals', () => {
     const registry = g.__dshChunks__ as Record<string, unknown>
-    const table = new Map<string, unknown>(CHUNK_EXTERNALS.map(spec => [spec, { spec }]))
+    const platformModules = new Map<string, unknown>([
+      ['react', React],
+      ['react/jsx-runtime', ReactJsxRuntime],
+      ['react-dom', ReactDom],
+      ['react-dom/client', ReactDomClient],
+    ])
+    const table = new Map<string, unknown>(CHUNK_EXTERNALS.map(spec => [
+      spec,
+      platformModules.get(spec) ?? { spec },
+    ]))
     for (const name of CHUNKS) {
       const factory = registry[name] as (require: (spec: string) => unknown) => Record<string, unknown>
       expect(() => factory((spec) => {
