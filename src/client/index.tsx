@@ -166,14 +166,21 @@ export function apply(ctx: Context): void {
   )
   // A failure anywhere in the client lifecycle must never take the app down
   // silently: log with the plugin prefix and pin a visible diagnostic strip
-  // to the page so a blank panel is never the only symptom.
+  // to the page so a blank panel is never the only symptom. This strip is
+  // the last-resort reporter (no CSS module is reachable from here), so its
+  // colors go through skin token chains with the previous hexes as the
+  // chain tails — worst case (no skin tokens on the page) it renders
+  // byte-identical to the old hardcoded bar, and any `--dsw-alias-*` skin
+  // re-themes it (guide §12: no hardcoded colors).
   const fail = (phase: string, error: unknown): void => {
     console.error(`[dsh-better-sidebar] ${phase} error:`, error)
     try {
       const bar = document.createElement('div')
       bar.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483000;max-width:70vw;padding:8px 12px;'
-        + 'font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#f2a1a1;background:#1b1b22;'
-        + 'border:1px solid #f2a1a1;border-radius:8px;white-space:pre-wrap'
+        + 'font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;'
+        + 'color:var(--dsw-alias-state-error-primary,#f2a1a1);'
+        + 'background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-base,#1b1b22));'
+        + 'border:1px solid var(--dsw-alias-state-error-primary,#f2a1a1);border-radius:8px;white-space:pre-wrap'
       bar.textContent = `[dsh-better-sidebar] ${phase} error: ${error instanceof Error ? error.message : String(error)}`
       document.body.appendChild(bar)
     } catch {
