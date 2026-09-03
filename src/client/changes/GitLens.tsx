@@ -168,6 +168,9 @@ export function GitLens(props: GitLensProps) {
     } finally {
       if (options.loading && options.generation === refreshGeneration.current) setLoading(false)
     }
+    // Granular scope fields: the scope object's identity churns, only its
+    // sessionId / cwd fields gate the git target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope.sessionId, scope.cwd, repoRoot])
 
   const refresh = useCallback(async (silent = false): Promise<void> => {
@@ -231,6 +234,9 @@ export function GitLens(props: GitLensProps) {
     } finally {
       refreshInFlight.current = false
     }
+    // Granular scope fields: the scope object's identity churns, only its
+    // sessionId / cwd fields gate the refresh target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope.sessionId, scope.cwd, refreshTarget])
 
   useEffect(() => {

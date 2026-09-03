@@ -297,7 +297,7 @@ export function apply(ctx: Context): void {
         // rides the same fetch, so one round trip covers both decisions).
         const decision = await Promise.race([
           loadBootDecision(api),
-          new Promise<null>(resolve => { const timer = window.setTimeout(() => resolve(null), 2000) }),
+          new Promise<null>(resolve => { window.setTimeout(() => resolve(null), 2000) }),
         ])
         if (disposed) return
         if (decision !== null) {

@@ -244,8 +244,7 @@ export async function loadChunk(name: ChunkName): Promise<ChunkExports> {
   if (revalidation !== null) await revalidation
   const cached = cache.get(name)
   if (cached !== undefined) return cached
-  let task: Promise<ChunkExports>
-  task = (async (): Promise<ChunkExports> => {
+  const task: Promise<ChunkExports> = (async (): Promise<ChunkExports> => {
     const test = testLoaders.get(name)
     if (test !== undefined) return test()
     const modules = moduleSystem()

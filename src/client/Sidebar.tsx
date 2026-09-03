@@ -35,14 +35,13 @@ import { IconCloseFill14, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context, SidebarSessionList } from '../context-types.ts'
 import { appendToDraft, insertFileReference } from './conversation-draft.ts'
 import {
-  BOTTOM_MIN, PANEL_MIN, activateTab, agentUuidOf, allLeaves, closeFloatByTab, closeTab, dockFloat, firstLeaf, floatTab,
-  floatWithTab, isAgentTabId, leafWithTab, migrateBottomTabs,
-  moveFloat, moveTab, moveTabToEdge, openDiffTab, openTabInActivePane, raiseFloat, reconcileAgentTerminals,
+  BOTTOM_MIN, PANEL_MIN, agentUuidOf, closeFloatByTab, closeTab, dockFloat, firstLeaf, floatTab,
+  isAgentTabId, leafWithTab, migrateBottomTabs,
+  moveFloat, moveTab, moveTabToEdge, openDiffTab, raiseFloat, reconcileAgentTerminals,
   resizeFloat, resizeSplitIn, setBottomHeight, setTabPin, setWidth, toggleBottomPanel, toggleExpanded, togglePanel,
-  type DropZone, type SidebarState, type SidebarStore, type SidebarTab, type SplitNode,
+  type DropZone, type SidebarState, type SidebarStore, type SidebarTab,
 } from './state.ts'
-import { collectPinnedTabs, createPinnedVirtualTab, getPinnedHomeScope, injectPinnedIntoTree, isPinnedVirtualId, isPinnedVirtualTab, parsePinnedVirtualId, type PinnedTabEntry } from './pinned.ts'
-import { IconPinOutline16 } from './icons.tsx'
+import { collectPinnedTabs, createPinnedVirtualTab, getPinnedHomeScope, injectPinnedIntoTree, isPinnedVirtualId, parsePinnedVirtualId, type PinnedTabEntry } from './pinned.ts'
 import { IconPanelBottomOutline16, IconPanelRightOutline16 } from './icons.tsx'
 import { Workbench, type WorkbenchActions } from './split-pane.tsx'
 import { isNarrowWidth, useViewportSize } from './breakpoints.ts'
@@ -418,7 +417,6 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     // for the descriptors' available() callbacks. (The render's own guard
     // sits below every hook; this memo must handle the no-session case
     // itself.)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state, ctx, sessionId, cwd],
   )
 
@@ -476,7 +474,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       window.clearTimeout(retry)
       socket?.close()
     }
-  }, [sessionId, store])
+  }, [sessionId, ctx, store])
 
   /**
    * Agent opens push: subscribe to the host's `sidebar_open` requests for
@@ -548,7 +546,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       window.clearTimeout(retry)
       socket?.close()
     }
-  }, [sessionId, store])
+  }, [sessionId, ctx, store])
 
   /**
    * Subagent auto-activation: the moment the current conversation spawns its
@@ -679,6 +677,9 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   const pinnedEntries: readonly PinnedTabEntry[] = useMemo(() => {
     if (sessionId === undefined) return []
     return collectPinnedTabs(store.getSessionStates(), { sessionId, cwd })
+    // snapshot / pinnedRevision are deliberate cache-busters (see the comment
+    // above): they recompute this memo for changes that carry no dep of their own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, sessionId, cwd, snapshot, pinnedRevision])
 
   /** Virtual SidebarTab objects for the pinned entries (stable references
@@ -1297,7 +1298,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     pinTab: (tabId, scope) => {
       store.reduce(s => setTabPin(s, tabId, scope === null ? null : { scope, homeCwd: cwd }))
     },
-  }), [store, sessionId, cwd])
+  }), [store, sessionId, cwd, ctx])
 
   /**
    * Wrap the base actions to intercept pinned VIRTUAL tab ids (injected from

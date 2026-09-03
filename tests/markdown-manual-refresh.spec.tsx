@@ -37,6 +37,8 @@ function FakeMarkdownViewer(props: FileViewerProps) {
       markDirty = undefined
       props.onToolbarControls?.(null)
     }
+    // Only the callback identities must re-wire; content is read at render time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.onToolbarControls, props.onToolbarState])
   return createElement('div', { 'data-testid': 'markdown-content' }, props.content ?? '')
 }

@@ -93,6 +93,9 @@ export function ChangesTab({ ctx, store, scope, tab, visible, onOpenFile, onOpen
       // only while nothing has ever loaded.
       if (generation === pollGen.current) setOpsError(true)
     }
+    // Granular scope fields: the scope object's identity churns, only its
+    // sessionId / cwd fields gate the poll target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope.sessionId, scope.cwd])
   useEffect(() => {
     pollGen.current += 1

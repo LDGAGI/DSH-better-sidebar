@@ -415,6 +415,9 @@ function JobOutputPane(props: {
     if (!active || !isJobLive(job)) return
     const timer = window.setInterval(() => { void load() }, JOB_POLL_MS)
     return () => { window.clearInterval(timer) }
+    // isJobLive reads only job.status; whole-job identity churns on every
+    // catalog refresh and must not restart the poll interval.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, active, job.status])
 
   useEffect(() => () => { controllerRef.current?.abort() }, [])
@@ -425,6 +428,8 @@ function JobOutputPane(props: {
     if (!isJobLive(job) || typeof state !== 'object' || state.text.length === 0) return
     const pre = preRef.current
     if (pre !== null) pre.scrollTop = pre.scrollHeight
+    // Same as the poll effect above: only the status transition matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, job.status])
 
   return (
@@ -656,7 +661,9 @@ export function SubagentView(props: {
     useCallback(() => sessions.list.getSnapshot(), [sessions]),
   )
   const byId = list.byId
-  const catalogs = list.subagentsByParent ?? {}
+  // Memoized so the empty-catalog fallback keeps a stable identity — a fresh
+  // `{}` per render would invalidate every catalog-dependent memo/effect.
+  const catalogs = useMemo(() => list.subagentsByParent ?? {}, [list.subagentsByParent])
 
   // The topology root: the main agent of the current session's tree.
   const rootId = useMemo(() => rootAncestor(byId, sessionId), [byId, sessionId])
@@ -680,6 +687,9 @@ export function SubagentView(props: {
     if (rootId === undefined || !active) return
     observe(rootId, true)
     return () => {
+      // The cleanup must release everything observed AT cleanup time (the set
+      // mutates as branches open), so reading the ref here is the point.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       for (const parentSessionId of observedRef.current) {
         sessions.setSubagentCatalogOpen?.(parentSessionId, false)
       }
