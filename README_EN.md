@@ -519,6 +519,7 @@ The dashed cards at the end of the "Sidebar content" / "File viewers" grids in t
 ```sh
 pnpm install      # @deepseek-ai/* devDependencies resolve (baseline 0.1.2-rc.1, next dist-tag) — no token needed
 pnpm typecheck    # tsc --noEmit
+pnpm lint         # eslint . (flat config: js + typescript-eslint + react-hooks recommended)
 pnpm build        # → lib/index.js + lib/invariant.js + lib/client.js + lib/client-registry.js + lib/types
 pnpm test         # vitest (includes manifest consistency guard; build first)
 pnpm watch        # tsdown --watch
