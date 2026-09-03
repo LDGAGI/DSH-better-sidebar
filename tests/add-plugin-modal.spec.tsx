@@ -26,7 +26,8 @@ import { createBetterSidebarService } from '../src/client/service.ts'
 import { createSidebarStore } from '../src/client/state.ts'
 
 // The act() environment flag (React 18.2 reads it before flushing effects).
-;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+import { setupReactAct } from './test-utils.ts'
+setupReactAct()
 
 const officeEntry = builtinViewerPlugins[0] as PluginEntry
 
