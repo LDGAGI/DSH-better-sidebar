@@ -188,10 +188,9 @@ export function apply(ctx: Context): void {
     }
   }
   try {
-    // rc.8+ exposes the client module system as the `ctx.modules` service
-    // (no window.__DSH_MODULES__ page global anymore); the chunk loader needs
-    // it to resolve its externals, so inject it before anything can load a
-    // lazy chunk. The loader falls back to the rc.7 global when absent.
+    // rc.8+ exposes the client module system as the `ctx.modules` service;
+    // the chunk loader needs it to resolve its externals, so inject it
+    // before anything can load a lazy chunk.
     setChunkModuleSystem(ctx.modules)
     // Fresh chunk state for this activation: drop per-test fixtures and
     // revalidate loaded chunk scripts against the bundle route's ETags —
