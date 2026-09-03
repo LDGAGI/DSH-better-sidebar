@@ -31,7 +31,7 @@ import { SiCursor, SiZedindustries } from 'react-icons/si'
 import { VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
 import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
 import { FenceErrorNotice } from './FenceErrorNotice.tsx'
-import { builtinFileIcon } from './file-icons.tsx'
+import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
 import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
 import { isImeComposition } from './ime-guard.ts'
 import { useSubmenuFlip } from './menu-flip.ts'
@@ -168,23 +168,20 @@ export function FileTree(props: {
     [service],
   )
   /**
-   * One file row's leading glyph: an externally registered icon
-   * (`registerFileIcon`, priority desc) wins; otherwise the built-in
-   * per-extension glyph map (monochrome VSCodicons), whose own fallback
-   * is the generic VscFile. A throwing registered factory is logged and
-   * skipped — a broken plugin icon must never blank the tree.
+   * One file row's leading glyph. The service resolver owns the whole
+   * chain (registered specific ext → built-in glyph map → registered
+   * global default → stock VscFile, with per-factory crash isolation);
+   * without a service the built-in map alone applies.
    */
-  const fileRowIcon = (path: string): ReactNode => {
-    const registered = service?.matchFileIcon(path)
-    if (registered !== undefined) {
-      try {
-        return registered.icon(path, 14)
-      } catch (error) {
-        console.error('[dsh-better-sidebar] file icon factory error:', error)
-      }
-    }
-    return builtinFileIcon(path, 14)
-  }
+  const fileRowIcon = (path: string): ReactNode =>
+    service !== undefined ? service.fileIcon(path, 14) : builtinFileIcon(path, 14)
+
+  /**
+   * One directory row's leading glyph: the registered `'folder'` /
+   * `'folder-open'` icon when present, else the built-in VSCodicons glyphs.
+   */
+  const dirRowIcon = (path: string, open: boolean): ReactNode =>
+    service !== undefined ? service.folderIcon(path, open, 14) : builtinFolderIcon(open, 14)
   const dataRef = useRef(data)
   /** The row whose path was just copied ("copied" label replaces its button). */
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
@@ -662,7 +659,7 @@ export function FileTree(props: {
               onDrop={(event) => { handleDirDrop(event, entry.path) }}
               onContextMenu={(event) => { openRowMenu(event, entry.path, true) }}
             >
-              {isOpen ? <VscFolderOpened size={14} /> : <VscFolder size={14} />}
+              {dirRowIcon(entry.path, isOpen)}
               <span className={css.explorerName}>{entry.name}</span>
               {entry.isSymlink && <IconLinkOutline16 size={12} className={css.explorerSymlink} />}
               {rowActions(entry)}
@@ -740,7 +737,7 @@ export function FileTree(props: {
             onDrop={(event) => { handleDirDrop(event, root) }}
             onContextMenu={(event) => { openRowMenu(event, root, true) }}
           >
-            <VscFolderOpened size={14} />
+            {dirRowIcon(root, true)}
             <span className={css.explorerName}>{baseName(root)}</span>
             {copiedPath === root
               ? <span className={css.explorerCopied}>{t('copied')}</span>
