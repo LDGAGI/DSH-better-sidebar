@@ -64,6 +64,12 @@ function refNames(refs: string): string[] {
   )]
 }
 
+/** One thrown value as display text (every error banner/row here normalizes
+ *  through this so non-Error rejections never render as '[object Object]'). */
+function errorMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason)
+}
+
 /** The pending destructive action (discard / revert / cherry-pick), gated by a confirm modal. */
 interface ConfirmState {
   title: string
@@ -157,7 +163,7 @@ export function GitLens(props: GitLensProps) {
       setLogEnded(logResult.length < LOG_BATCH)
     } catch (reason) {
       if (options.generation === refreshGeneration.current) {
-        setError(reason instanceof Error ? reason.message : String(reason))
+        setError(errorMessage(reason))
       }
     } finally {
       if (options.loading && options.generation === refreshGeneration.current) setLoading(false)
@@ -219,7 +225,7 @@ export function GitLens(props: GitLensProps) {
       await refreshTarget(target, { loading: !silent, generation })
     } catch (reason) {
       if (generation === refreshGeneration.current) {
-        setError(reason instanceof Error ? reason.message : String(reason))
+        setError(errorMessage(reason))
         if (!silent) setLoading(false)
       }
     } finally {
@@ -289,7 +295,7 @@ export function GitLens(props: GitLensProps) {
       if (next.length < LOG_BATCH) setLogEnded(true)
     } catch (reason) {
       if (generation === refreshGeneration.current && target === chosenPathRef.current) {
-        setCommitError(`${t('historyLoadError')}: ${reason instanceof Error ? reason.message : String(reason)}`)
+        setCommitError(`${t('historyLoadError')}: ${errorMessage(reason)}`)
       }
     } finally {
       if (generation === refreshGeneration.current && target === chosenPathRef.current) setLogLoadingMore(false)
@@ -355,7 +361,7 @@ export function GitLens(props: GitLensProps) {
       setCommitMsg('')
       await refresh()
     } catch (reason) {
-      setCommitError(reason instanceof Error ? reason.message : String(reason))
+      setCommitError(errorMessage(reason))
     } finally {
       setBusy(false)
     }
@@ -369,7 +375,7 @@ export function GitLens(props: GitLensProps) {
       await api.gitCheckout(gitScope, branch, selectedWorktree)
       await refresh()
     } catch (reason) {
-      setCommitError(`${t('checkoutError')}: ${reason instanceof Error ? reason.message : String(reason)}`)
+      setCommitError(`${t('checkoutError')}: ${errorMessage(reason)}`)
     } finally {
       setBusy(false)
     }
@@ -384,7 +390,7 @@ export function GitLens(props: GitLensProps) {
         await confirmState.onConfirm()
         await refresh()
       } catch (reason) {
-        setCommitError(reason instanceof Error ? reason.message : String(reason))
+        setCommitError(errorMessage(reason))
       } finally {
         setBusy(false)
       }
