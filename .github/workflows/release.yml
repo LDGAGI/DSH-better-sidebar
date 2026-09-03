@@ -84,14 +84,20 @@ jobs:
             exit 1
           fi
 
-      - name: Build
-        run: pnpm build
-
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
         run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # The consumer-facing declaration surface guard — mirrors the ci.yml
+      # verification order (typecheck → test → build → check:consumer-types)
+      # so a release is gated on the same checks a PR runs.
+      - name: Check consumer type surface
+        run: pnpm check:consumer-types
 
       - name: Dry-run publish (validation only)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
