@@ -17,6 +17,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { GitLogEntry, GitStatusEntry, GitStatusResult, GitWorktree, SessionScope } from '../api.ts'
 import { api } from '../api.ts'
+import { usePolling } from '../use-polling.ts'
 import { baseName, isWithinWorkspace, relativeTo } from '../paths.ts'
 import { resolveSidebarPath } from '../produced-files.ts'
 import { relativeTime, t } from '../locales.ts'
@@ -280,11 +281,11 @@ export function GitLens(props: GitLensProps) {
     const generation = refreshGeneration.current += 1
     void refreshTarget(chosenPathRef.current ?? '', { loading: true, generation })
   }
-  useEffect(() => {
-    if (!visible) return
-    const timer = window.setInterval(() => { void refresh(true) }, 2_000)
-    return () => { window.clearInterval(timer) }
-  }, [visible, refresh])
+  /** The silent poll tick (the status-only fast path between worktree
+   *  re-lists, see refresh) — fixed 2s cadence while visible, no initial
+   *  burst (mount and scope changes already refresh above). */
+  const pollTick = useCallback((): Promise<void> => refresh(true), [refresh])
+  usePolling(visible, pollTick, { intervalMs: 2_000 })
 
   /** Append the next history page (lazy: only when the user asks for more). */
   const loadMoreLog = async (): Promise<void> => {

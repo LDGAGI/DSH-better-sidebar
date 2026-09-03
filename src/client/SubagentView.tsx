@@ -53,6 +53,7 @@ import {
   type TreeJob,
 } from './subagent-jobs.ts'
 import { api, type JobOutputResult } from './api.ts'
+import { usePolling } from './use-polling.ts'
 import { IconStopOutline16 } from './icons.tsx'
 import { t } from './locales.ts'
 import css from './SubagentView.module.css'
@@ -180,52 +181,30 @@ function SubagentLiveLines(props: { live: LastActivity | undefined }) {
 /**
  * One shared live-preview poller for the whole Subagent tree. Unlike the old
  * per-card `subagents.history` timers, this sends at most ONE `subagents.live`
- * request at a time: a recursive timeout starts only after the previous
- * request settles, so a slow host never sees abort/restart storms.
+ * request at a time (the shared poller's self-scheduling mode arms the next
+ * tick only after the previous request settles, so a slow host never sees
+ * abort/restart storms); a response settling after the poller stopped (page
+ * hidden, tree re-rooted) is dropped via the aborted signal.
  */
 function useSubagentLive(
   rootId: string | undefined,
   active: boolean,
 ): Readonly<Record<string, LastActivity>> {
   const [live, setLive] = useState<Record<string, LastActivity>>({})
-  const controllerRef = useRef<AbortController | undefined>(undefined)
 
   // A new tree must never inherit another root's live previews.
   useEffect(() => { setLive({}) }, [rootId])
 
-  useEffect(() => {
-    if (rootId === undefined || !active) return
-    const targetRootId = rootId
-    let disposed = false
-    let timer: number | undefined
-
-    const schedule = (): void => {
-      if (disposed) return
-      timer = window.setTimeout(() => { void load() }, POLL_MS)
-    }
-    async function load(): Promise<void> {
-      if (disposed) return
-      const controller = new AbortController()
-      controllerRef.current = controller
-      try {
-        const result = await api.subagentsLive(targetRootId, controller.signal)
-        if (!disposed) setLive(result.live)
-      } catch {
-        // Keep the last known live map; the next scheduled poll retries.
-      } finally {
-        if (controllerRef.current === controller) controllerRef.current = undefined
-        if (!disposed) schedule()
-      }
-    }
-
-    void load()
-    return () => {
-      disposed = true
-      if (timer !== undefined) window.clearTimeout(timer)
-      controllerRef.current?.abort()
-      controllerRef.current = undefined
-    }
-  }, [rootId, active])
+  const poll = useCallback(async (signal: AbortSignal): Promise<void> => {
+    if (rootId === undefined) return
+    const result = await api.subagentsLive(rootId, signal)
+    if (!signal.aborted) setLive(result.live)
+  }, [rootId])
+  usePolling(rootId !== undefined && active, poll, {
+    intervalMs: POLL_MS,
+    mode: 'self-scheduling',
+    immediate: true,
+  })
 
   return live
 }
