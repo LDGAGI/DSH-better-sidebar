@@ -28,15 +28,17 @@ import {
   IconEditOutline16, IconLinkOutline16, IconTrashOutline16, Menu, Modal, type MenuEntry, type MenuItem, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SiCursor, SiZedindustries } from 'react-icons/si'
-import { VscFile, VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
+import { VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
 import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
 import { FenceErrorNotice } from './FenceErrorNotice.tsx'
+import { builtinFileIcon } from './file-icons.tsx'
 import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
 import { isImeComposition } from './ime-guard.ts'
 import { useSubmenuFlip } from './menu-flip.ts'
 import type { OpenWithTarget } from './open-with.ts'
 import { relativeTo } from './paths.ts'
 import { t } from './locales.ts'
+import type { BetterSidebarService } from './service.ts'
 import type { SidebarStore } from './state.ts'
 import { uploadItemsFromDrop, uploadItemsFromFiles, type UploadItem } from './upload.ts'
 import css from './sidebar.module.css'
@@ -145,9 +147,44 @@ export function FileTree(props: {
   onUploadRequest: (dir: string, items: UploadItem[]) => void
   /** True while an upload is in flight (drops are ignored). */
   busy: boolean
+  /**
+   * The sidebar registry service: when present, externally registered file
+   * icons (`registerFileIcon`) outrank the built-in glyph map on file rows.
+   * Absent → the built-ins alone (the host always passes it today).
+   */
+  service?: BetterSidebarService
 }) {
-  const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy } = props
+  const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy, service } = props
   const [data, setData] = useState<Record<string, LevelData>>({})
+  /**
+   * Registry revision for the file-icon feature: bumps on ANY registry
+   * change (register/dispose of tabs, viewers, or icons — one listener
+   * set) so rows re-resolve their icons. The value itself is unread; the
+   * state bump IS the re-render trigger.
+   */
+  const [, setIconsVersion] = useState(0)
+  useEffect(
+    () => service?.subscribe(() => { setIconsVersion(version => version + 1) }),
+    [service],
+  )
+  /**
+   * One file row's leading glyph: an externally registered icon
+   * (`registerFileIcon`, priority desc) wins; otherwise the built-in
+   * per-extension glyph map (monochrome VSCodicons), whose own fallback
+   * is the generic VscFile. A throwing registered factory is logged and
+   * skipped — a broken plugin icon must never blank the tree.
+   */
+  const fileRowIcon = (path: string): ReactNode => {
+    const registered = service?.matchFileIcon(path)
+    if (registered !== undefined) {
+      try {
+        return registered.icon(path, 14)
+      } catch (error) {
+        console.error('[dsh-better-sidebar] file icon factory error:', error)
+      }
+    }
+    return builtinFileIcon(path, 14)
+  }
   const dataRef = useRef(data)
   /** The row whose path was just copied ("copied" label replaces its button). */
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
@@ -658,7 +695,7 @@ export function FileTree(props: {
           onDrop={(event) => { handleFileDrop(event, entry.path) }}
           onContextMenu={(event) => { openRowMenu(event, entry.path, false) }}
         >
-          <VscFile size={14} />
+          {fileRowIcon(entry.path)}
           <span className={css.explorerName}>{entry.name}</span>
           {entry.isSymlink && <IconLinkOutline16 size={12} className={css.explorerSymlink} />}
           {rowActions(entry)}

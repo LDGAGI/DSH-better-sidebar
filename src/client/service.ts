@@ -324,6 +324,24 @@ export interface FileViewerDescriptor {
   component: (props: FileViewerProps) => ReactNode
 }
 
+/**
+ * Describes one external file-icon registration (feature `fileIcons`).
+ * Registrations override the built-in per-extension glyph map for their
+ * extensions; unlike the built-ins (monochrome `currentColor` per the skin
+ * contract), a registration's icon may be ANY ReactNode — colored included —
+ * and the registering plugin owns how its colors behave across skins.
+ */
+export interface FileIconDescriptor {
+  /** Unique id (`'my-plugin:icons'`). */
+  id: string
+  /** Lowercase extensions without leading dot (`['csv','tsv']`). `[]` = match any (catch-all). */
+  exts: readonly string[]
+  /** Higher wins; default 0. Registered icons always outrank the built-in map. */
+  priority?: number
+  /** Size-aware icon factory (the tree renders at 14 today). */
+  icon: (path: string, size: number) => ReactNode
+}
+
 /** One `openTab` request. */
 export interface OpenTabSeed {
   type: string
@@ -347,8 +365,17 @@ export interface OpenTabSeed {
 export interface BetterSidebarService {
   registerTab(descriptor: TabDescriptor): () => void
   registerFileViewer(descriptor: FileViewerDescriptor): () => void
+  registerFileIcon(descriptor: FileIconDescriptor): () => void
   getTabs(): readonly TabDescriptor[]
   getFileViewers(): readonly FileViewerDescriptor[]
+  getFileIcons(): readonly FileIconDescriptor[]
+  /**
+   * Find a registered file icon for a path (priority desc, then registration
+   * order; `exts: []` is a catch-all). Undefined means "no registration
+   * claims it" — the caller falls back to the built-in glyph map, then the
+   * generic `VscFile`.
+   */
+  matchFileIcon(path: string): FileIconDescriptor | undefined
   /** Find a tab descriptor by id (undefined if not registered). */
   getTab(id: string): TabDescriptor | undefined
   /**
@@ -483,6 +510,8 @@ export const SIDEBAR_SERVICE_VERSION = '0.18.1'
  * - 'floatWindows' (v0.16.0): tabs float as free windows — openTab's dedupe/
  *   id focus targets RAISE the floating window (never duplicate the tab or
  *   expand panels), closeTab on a floating tab closes it with its window.
+ * - 'fileIcons' (v0.19.0): registerFileIcon/getFileIcons/matchFileIcon —
+ *   external per-extension file-tree icons overriding the built-in glyphs.
  */
 export const SIDEBAR_FEATURES = [
   'badge',
@@ -496,6 +525,7 @@ export const SIDEBAR_FEATURES = [
   'urlTarget',
   'settingSelect',
   'floatWindows',
+  'fileIcons',
 ] as const
 
 /** Run one plugin callback; a throw is logged and never breaks the caller. */
@@ -515,6 +545,7 @@ function safeCall(fn: () => void): void {
 export function createBetterSidebarService(store: SidebarStore): BetterSidebarService {
   const tabs = new Map<string, TabDescriptor>()
   const viewers = new Map<string, FileViewerDescriptor>()
+  const fileIcons = new Map<string, FileIconDescriptor>()
   const listeners = new Set<() => void>()
 
   const notify = (): void => {
@@ -556,7 +587,42 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
 
   const getTabs = (): readonly TabDescriptor[] => Array.from(tabs.values())
   const getFileViewers = (): readonly FileViewerDescriptor[] => Array.from(viewers.values())
+  const getFileIcons = (): readonly FileIconDescriptor[] => Array.from(fileIcons.values())
   const getTab = (id: string): TabDescriptor | undefined => tabs.get(id)
+
+  const registerFileIcon = (descriptor: FileIconDescriptor): (() => void) => {
+    if (fileIcons.has(descriptor.id)) {
+      throw new Error(`[dsh-better-sidebar] file icons "${descriptor.id}" already registered`)
+    }
+    fileIcons.set(descriptor.id, descriptor)
+    notify()
+    return () => {
+      if (fileIcons.get(descriptor.id) === descriptor) {
+        fileIcons.delete(descriptor.id)
+        notify()
+      }
+    }
+  }
+
+  // Priority desc, stable for equal priorities (insertion order) — the same
+  // ranking `matchFileViewer` uses, plus one tie-break: at EQUAL priority a
+  // catch-all (`exts: []`) sorts behind specific descriptors, so a
+  // same-priority `['md']` registration is never shadowed by an earlier
+  // registered catch-all. This never consults the built-in glyph map: an
+  // undefined result IS the "fall through to the built-ins" signal.
+  const matchFileIcon = (path: string): FileIconDescriptor | undefined => {
+    const ext = extOfPath(path)
+    for (const d of Array.from(fileIcons.values()).sort((a, b) => {
+      const byPriority = (b.priority ?? 0) - (a.priority ?? 0)
+      if (byPriority !== 0) return byPriority
+      const aCatch = a.exts.length === 0 ? 1 : 0
+      const bCatch = b.exts.length === 0 ? 1 : 0
+      return aCatch - bCatch
+    })) {
+      if (d.exts.length === 0 || d.exts.includes(ext)) return d
+    }
+    return undefined
+  }
 
   // The enable switches come from the user's side card prefs (the shared
   // store the service is bound to): an absent key means enabled.
@@ -813,8 +879,11 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   return {
     registerTab,
     registerFileViewer,
+    registerFileIcon,
     getTabs,
     getFileViewers,
+    getFileIcons,
+    matchFileIcon,
     getTab,
     isTabEnabled,
     isViewerEnabled,

@@ -549,10 +549,17 @@ interface BetterSidebarService {
   registerTab(descriptor: TabDescriptor): () => void
   /** 注册文件预览器；返回 disposer */
   registerFileViewer(descriptor: FileViewerDescriptor): () => void
+  /** 注册自定义文件树图标（v0.19.0+，features 含 'fileIcons'）；返回 disposer */
+  registerFileIcon(descriptor: FileIconDescriptor): () => void
   /** 当前已注册的 tab 描述符快照（同步，供 useSyncExternalStore 用；含被设置页禁用的类型） */
   getTabs(): readonly TabDescriptor[]
   /** 当前已注册的 file viewer 描述符快照（含被设置页禁用的 viewer） */
   getFileViewers(): readonly FileViewerDescriptor[]
+  /** 当前已注册的文件图标描述符快照（v0.19.0+） */
+  getFileIcons(): readonly FileIconDescriptor[]
+  /** 按 path 匹配已注册的文件图标（priority 降序；exts: [] 为 catch-all；
+   *  返回 undefined = 无人认领，调用方回退内置 glyph 再回退通用 VscFile） */
+  matchFileIcon(path: string): FileIconDescriptor | undefined
   /** 按 id 查 tab 描述符 */
   getTab(id: string): TabDescriptor | undefined
   /** 某个 tab 类型是否在 Side card 设置中启用（v0.4.1+；缺省 = 启用） */
@@ -586,7 +593,8 @@ interface BetterSidebarService {
   readonly version: string
   /** 单调能力清单（只增不删）：'badge' | 'tabLifecycle' | 'updateTab' |
    *  'openFile' | 'targetedOpen' | 'stateSubscription' | 'tabMeta' |
-   *  'pluginSettings' | 'urlTarget' | 'settingSelect' | 'floatWindows'
+   *  'pluginSettings' | 'urlTarget' | 'settingSelect' | 'floatWindows' |
+   *  'fileIcons'
    *  ——用 `features.includes('xxx')` 按能力 gate。 */
   readonly features: readonly string[]
   /** 当前快照：激活 sessionId + 其状态（面板几何/打开的 tabs/展开集）+ prefs。
@@ -618,7 +626,39 @@ interface OpenTabSeed {
    *  undefined = 不改，null = 显式清除 */
   meta?: unknown
 }
+
+/** 文件树图标注册描述符（v0.19.0+，features 含 'fileIcons'）。 */
+interface FileIconDescriptor {
+  /** 唯一 id（如 'my-plugin:icons'） */
+  id: string
+  /** 小写扩展名、不带前导点（如 ['csv','tsv']）；[] = catch-all 匹配任意文件 */
+  exts: readonly string[]
+  /** priority 高者胜，缺省 0；注册图标整体优先于内置 glyph 映射 */
+  priority?: number
+  /** 尺寸感知的图标工厂（文件树当前以 size=14 渲染）。
+   *  与内置图标（currentColor 单色，遵循皮肤契约）不同，注册图标可以是
+   *  任意 ReactNode——包括彩色图标；颜色在皮肤间的表现由注册方自行负责。 */
+  icon: (path: string, size: number) => ReactNode
+}
 ```
+
+**文件树图标注册示例**（v0.19.0+；未注册的扩展名回退内置单色 glyph 映射——
+markdown/媒体/pdf/json/代码/配置/数据库/压缩包各有 glyph，再回退通用 `VscFile`）：
+
+```ts
+if (ctx.betterSidebar.features.includes('fileIcons')) {
+  ctx.effect(() =>
+    ctx.betterSidebar.registerFileIcon({
+      id: 'my-plugin:icons',
+      exts: ['csv', 'tsv'],
+      icon: (path, size) => <MyCsvIcon size={size} />, // 彩色也可以
+    })
+  )
+}
+```
+
+注册/注销即时生效（文件树订阅注册表变化自动重渲染）；图标工厂抛错会被吞掉
+（console.error 后回退内置 glyph），不会空白文件树行。
 
 **版本与能力探测**（v0.12.0+）：消费插件先查能力再使用新 API，老版本（或旧 DSH）下优雅降级：
 
