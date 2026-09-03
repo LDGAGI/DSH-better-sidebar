@@ -947,9 +947,11 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
                 ...getShellPresets().map(preset => ({
                   value: `preset:${preset.id}`,
                   title: preset.title,
+                  // The preset desc is i18n-friendly (string or () => string)
+                  // — resolve it like every other settings text here.
                   desc: preset.detect?.(detectedEnv) === true
-                    ? `${preset.desc}（${t('settingsSchemeDetectedSuffix')}）`
-                    : preset.desc,
+                    ? `${textOf(preset.desc)}（${t('settingsSchemeDetectedSuffix')}）`
+                    : textOf(preset.desc),
                 })),
                 { value: 'custom', title: t('settingsSchemeCustomTitle'), desc: t('settingsSchemeCustomDesc') },
               ]}
