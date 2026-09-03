@@ -524,6 +524,7 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 ```sh
 pnpm install      # @deepseek-ai/* devDependencies 已发布（基线 0.1.2-rc.1，next dist-tag），直接解析、无需令牌
 pnpm typecheck    # tsc --noEmit
+pnpm lint         # eslint .（flat config：js + typescript-eslint + react-hooks recommended）
 pnpm build        # → lib/index.js + lib/invariant.js + lib/client.js + lib/client-registry.js + lib/types
 pnpm test         # vitest（含 manifest 一致性守卫，需先 build）
 pnpm watch        # tsdown --watch

@@ -449,7 +449,7 @@ function baseNameOf(path: string): string {
 export function matchUrlTarget(tabs: readonly TabDescriptor[], url: URL): TabDescriptor | undefined {
   for (const tab of tabs) {
     if (tab.urlTarget === undefined) continue
-    let claimed = false
+    let claimed: boolean
     try {
       claimed = tab.urlTarget(url) === true
     } catch (error) {

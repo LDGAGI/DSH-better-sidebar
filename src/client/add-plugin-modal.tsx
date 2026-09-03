@@ -43,7 +43,7 @@ const COPIED_FEEDBACK_MS = 1500
 /** The modal body: the GitHub topic button + the recommended plugin list
  *  with per-entry jump/copy buttons (extracted for direct testing). */
 export function PluginListBody(props: { service: BetterSidebarService; kind: PluginKind }) {
-  const { service, kind } = props
+  const { kind } = props
   // Which entry's copy button currently shows the "已复制" feedback.
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Live catalog filter (name / id / description). A free-text search keeps

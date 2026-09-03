@@ -41,11 +41,6 @@ function removeModuleSystem(): void {
   delete (globalThis as Record<string, unknown>).__DSH_MODULES__
 }
 
-/** The global registry the chunk scripts populate (mirror of chunk-loader). */
-function registry(): Record<string, unknown> {
-  return (globalThis as { __dshChunks__?: Record<string, unknown> }).__dshChunks__ ?? {}
-}
-
 /** Simulate a chunk script executing: it assigns its factory to the registry. */
 function simulateScript(name: string, factory: (require: (spec: string) => unknown) => ChunkExports): void {
   const g = globalThis as { __dshChunks__?: Record<string, unknown> }
@@ -314,8 +309,7 @@ describe('revalidateChunksOnReactivate (HMR re-activation keeps unchanged chunks
     const revalidating = revalidateChunksOnReactivate()
     // A lazy open DURING the pending revalidation must NOT get the old cache.
     let resolved = false
-    let pendingLoad: Promise<ChunkExports> | null = null
-    pendingLoad = loadChunk('editor').then((exports) => { resolved = true; return exports })
+    const pendingLoad = loadChunk('editor').then((exports) => { resolved = true; return exports })
     await new Promise((resolve) => setTimeout(resolve, 5))
     expect(resolved, 'loadChunk must await the pending revalidation').toBe(false)
     // Release the HEAD; the barrier lifts and the load re-injects fresh exports.
@@ -369,7 +363,7 @@ describe('revalidateChunksOnReactivate (HMR re-activation keeps unchanged chunks
       scriptCalls += 1
       simulateScript('editor', () => ({ TextEditor: `editor-view:${scriptCalls}` }))
     })
-    let etag = '"v1"'
+    const etag = '"v1"'
     stubBundleHead(() => etag)
     await loadChunk('editor')
     await settleEtag()
