@@ -51,9 +51,10 @@ jobs:
           # Tests run git log against this repository and need full history.
           fetch-depth: 0
 
+      # pnpm version is pinned via packageManager in package.json; the action
+      # reads it from there (specifying both makes action-setup fail on
+      # purpose with ERR_PNPM_BAD_PM_VERSION).
       - uses: pnpm/action-setup@v6
-        with:
-          version: 11
 
       - uses: actions/setup-node@v7
         with:
