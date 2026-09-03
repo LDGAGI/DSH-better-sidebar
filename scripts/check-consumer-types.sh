@@ -10,6 +10,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Git Bash (MSYS) `ln -s` deep-copies directories by default — copying this
+# repo (node_modules + full .git history) would be catastrophic. Force real
+# native symlinks instead: the GitHub Windows runners (Developer Mode, admin
+# user) can create them, and nativestrict makes ln fail loudly rather than
+# silently falling back to a copy. Inert on Linux/macOS.
+export MSYS="winsymlinks:nativestrict"
+
 # The check reads the BUILT declaration surface (lib/types) — fail loudly
 # instead of silently passing when the build output is missing.
 if [ ! -f lib/types/client/service.d.ts ]; then
