@@ -27,6 +27,7 @@ import {
   type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab,
 } from './state.ts'
 import { isNarrowWidth } from './breakpoints.ts'
+import { extOf } from './paths.ts'
 import type { SessionScope } from './api.ts'
 import type { SidebarPrefs } from '../prefs-shared.ts'
 
@@ -427,14 +428,6 @@ export interface BetterSidebarService {
   openFile(scope: SessionScope, path: string, title?: string): void
 }
 
-/** Extract the lowercase extension without leading dot from a path. */
-function extOfPath(path: string): string {
-  const at = path.lastIndexOf('.')
-  if (at === -1) return ''
-  const base = path.slice(at + 1).toLowerCase()
-  return base.includes('/') || base.includes('\\') ? '' : base
-}
-
 /** The file name of a path (both separators). */
 function baseNameOf(path: string): string {
   const at = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
@@ -571,7 +564,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   const isViewerEnabled = (id: string): boolean => store.getPrefs().viewersEnabled[id] !== false
 
   const matchFileViewer = (path: string, head?: Uint8Array): FileViewerDescriptor | undefined => {
-    const ext = extOfPath(path)
+    const ext = extOf(path)
     // Single pass in priority order (descending; stable for equal
     // priorities — insertion order). Each descriptor gets first refusal in
     // its own turn: `detect` (when head bytes are available) beats its own

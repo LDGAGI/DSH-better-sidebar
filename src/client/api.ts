@@ -129,6 +129,25 @@ export type TerminalDepsStatus =
     note?: string
   }
 
+/**
+ * Parse one `/sidebar` JSON response envelope into its value. A non-ok
+ * status, an unparseable body, or any shape other than `{ok: true, value}`
+ * surfaces as {@link SidebarApiError} carrying the wire code (falling back
+ * to the HTTP status). Shared by the JSON api route and the raw upload
+ * route, whose envelopes are identical.
+ */
+async function readEnvelope<T>(response: Response): Promise<T> {
+  const parsed: { ok?: boolean; value?: unknown; error?: { code?: string; message?: string } } | null
+    = await response.json().catch(() => null)
+  if (!response.ok || parsed === null || parsed.ok !== true || parsed.value === undefined) {
+    throw new SidebarApiError(
+      parsed?.error?.code ?? 'http',
+      parsed?.error?.message ?? `HTTP ${response.status}`,
+    )
+  }
+  return parsed.value as T
+}
+
 async function call<T>(method: string, payload: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   let response: Response
   try {
@@ -141,15 +160,7 @@ async function call<T>(method: string, payload: Record<string, unknown>, signal?
   } catch (error) {
     throw new SidebarApiError('network', error instanceof Error ? error.message : String(error))
   }
-  const parsed: { ok?: boolean; value?: unknown; error?: { code?: string; message?: string } } | null
-    = await response.json().catch(() => null)
-  if (!response.ok || parsed === null || parsed.ok !== true || parsed.value === undefined) {
-    throw new SidebarApiError(
-      parsed?.error?.code ?? 'http',
-      parsed?.error?.message ?? `HTTP ${response.status}`,
-    )
-  }
-  return parsed.value as T
+  return readEnvelope<T>(response)
 }
 
 /**
@@ -180,15 +191,7 @@ async function fetchUpload<T>(
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new SidebarApiError('network', error instanceof Error ? error.message : String(error))
   }
-  const parsed: { ok?: boolean; value?: unknown; error?: { code?: string; message?: string } } | null
-    = await response.json().catch(() => null)
-  if (!response.ok || parsed === null || parsed.ok !== true || parsed.value === undefined) {
-    throw new SidebarApiError(
-      parsed?.error?.code ?? 'http',
-      parsed?.error?.message ?? `HTTP ${response.status}`,
-    )
-  }
-  return parsed.value as T
+  return readEnvelope<T>(response)
 }
 
 /** One request's session scope: the conversation id plus its cwd when known. */
