@@ -8,9 +8,10 @@
  * - externals resolve through the module system's seed branch (the stable,
  *   version-independent part), once per page,
  * - resetChunks drops the cache and the externals memo (HMR).
- * The production path runs against a fake `window.__DSH_MODULES__` and a
- * stub script loader that simulates the executed chunk script by assigning
- * the plugin-owned global factory registry.
+ * The production path runs against a fake module system injected via
+ * {@link setChunkModuleSystem} (mirroring the client half's `ctx.modules`
+ * injection) and a stub script loader that simulates the executed chunk
+ * script by assigning the plugin-owned global factory registry.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import './browser-globals.ts'
@@ -33,12 +34,8 @@ function installModuleSystem(): FakeModuleSystem {
   const fake: FakeModuleSystem = {
     import: vi.fn(async (specifier: string) => ({ seed: specifier })),
   }
-  ;(globalThis as Record<string, unknown>).__DSH_MODULES__ = fake
+  setChunkModuleSystem(fake)
   return fake
-}
-
-function removeModuleSystem(): void {
-  delete (globalThis as Record<string, unknown>).__DSH_MODULES__
 }
 
 /** Simulate a chunk script executing: it assigns its factory to the registry. */
@@ -49,7 +46,6 @@ function simulateScript(name: string, factory: (require: (spec: string) => unkno
 }
 
 beforeEach(() => {
-  removeModuleSystem()
   setChunkModuleSystem(undefined)
   delete (globalThis as Record<string, unknown>).__dshChunks__
   resetChunks()
@@ -89,9 +85,6 @@ describe('test-registry path (vitest / jsdom-less environments)', () => {
 describe('production path (script injection + global registry + externals require)', () => {
   it('resolves externals through an injected ctx.modules system (rc.8 — no page global)', async () => {
     const modules = installModuleSystem()
-    // rc.8 drops window.__DSH_MODULES__; the client half injects ctx.modules.
-    removeModuleSystem()
-    setChunkModuleSystem(modules)
     const loaded: string[] = []
     setChunkScriptLoaderForTests(async (src) => {
       loaded.push(src)
