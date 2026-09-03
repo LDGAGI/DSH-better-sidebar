@@ -19,7 +19,8 @@ import { createBetterSidebarService } from '../src/client/service.ts'
 import { allLeaves, createSidebarStore, type SidebarTab } from '../src/client/state.ts'
 
 // The act() environment flag (React 18.2 reads it before flushing effects).
-;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
+import { setupReactAct } from './test-utils.ts'
+setupReactAct()
 
 /** A store with the seeded editor-home tab (default prefs: separate mode;
  *  merged-mode scenarios re-enable editorExplorer explicitly). */
