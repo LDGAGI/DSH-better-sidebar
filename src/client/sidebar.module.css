@@ -90,6 +90,11 @@
   flex-direction: row;
   gap: 4px;
   pointer-events: auto;
+  /* The cluster recenters between the panel's tab strip (top: 3) and DSH's
+     session header row (top: 14, see the collapsed rule below) on every
+     expand/collapse — ride the panel slide's own duration/easing so the two
+     moves stay in lockstep instead of the cluster snapping. */
+  transition: top var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
 /* The tab strip of the OPEN right panel reserves the cluster's width at its
