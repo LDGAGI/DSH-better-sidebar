@@ -20,8 +20,8 @@
 #   bash scripts/e2e-aggregate-mount.sh
 #
 # 环境变量（均可省略）：
-#   DSH_CMD        dsh 命令；缺省 `npx -y --package @deepseek-ai/dsh dsh`
-#                  （与 pm2 启动器同源，避免依赖可能失效的 PATH dsh）
+#   DSH_CMD        dsh 命令；缺省 PATH 上的 `dsh`，回退 npx 拉官方包
+#                  （同 e2e-mount.sh）
 #   TARBALL        插件 tarball；缺省仓库根 dsh-better-sidebar-*.tgz（须已 pack）
 #   PORT           固定端口（默认 0 = OS 分配，从日志解析 URL）
 #   DSH_HOME_BASE  scratch 根目录（默认系统临时目录）。脚本始终在其下新建
@@ -37,7 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FIXTURE_DIR="$ROOT/tests/fixtures/aggregate-better-sidebar"
 
-DSH_CMD="${DSH_CMD:-npx -y --package @deepseek-ai/dsh dsh}"
+DSH_CMD="${DSH_CMD:-dsh}"
 TARBALL="${TARBALL:-}"
 PORT="${PORT:-0}"
 KEEP_HOME="${KEEP_HOME:-}"
@@ -51,8 +51,23 @@ command -v pnpm >/dev/null 2>&1 || die "未找到 pnpm（dsh plugin 转发给 pn
 command -v npm >/dev/null 2>&1 || die "未找到 npm（打包 fixture 需要）"
 command -v curl >/dev/null 2>&1 || die "未找到 curl"
 
+# dsh CLI 解析：PATH 上的 dsh 优先，否则 npx 拉官方包（同 scripts/install.sh
+# 与 e2e-mount.sh）
+if ! command -v "$DSH_CMD" >/dev/null 2>&1; then
+  if command -v npx >/dev/null 2>&1; then
+    say "PATH 上无 ${DSH_CMD}，回退 npx -y --package @deepseek-ai/dsh"
+    DSH_CMD="npx -y --package @deepseek-ai/dsh dsh"
+  else
+    die "未找到 $DSH_CMD 或 npx；请先安装 DSH CLI（npm i -g @deepseek-ai/dsh）或用 DSH_CMD 指定"
+  fi
+fi
+
+# tarball 解析（多个候选时取 mtime 最新——`ls | head -1` 的字典序会拿到
+# 旧版本号的历史 tarball，把冒烟挂到过期产物上；同 e2e-mount.sh）
 if [ -z "$TARBALL" ]; then
-  TARBALL="$(ls "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | head -1 || true)"
+  TARBALL="$(ls -t "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | head -1 || true)"
+  COUNT="$(ls "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | wc -l | tr -d ' ' || true)"
+  [ "$COUNT" -le 1 ] || warn "发现 $COUNT 个 tarball，按 mtime 选用最新：$(basename "$TARBALL")（建议清理其余）"
 fi
 [ -n "$TARBALL" ] && [ -f "$TARBALL" ] || die "未找到插件 tarball：先在本仓库跑 pnpm build && npm pack，或用 TARBALL 指定"
 

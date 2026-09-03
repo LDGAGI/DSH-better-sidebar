@@ -55,7 +55,7 @@ fi
 # 旧版本号的历史 tarball，把冒烟挂到过期产物上）
 if [ -z "$TARBALL" ]; then
   TARBALL="$(ls -t "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | head -1 || true)"
-  COUNT="$(ls "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | wc -l | tr -d ' ')"
+  COUNT="$(ls "$ROOT"/dsh-better-sidebar-*.tgz 2>/dev/null | wc -l | tr -d ' ' || true)"
   [ "$COUNT" -le 1 ] || warn "发现 $COUNT 个 tarball，按 mtime 选用最新：$(basename "$TARBALL")（建议清理其余）"
 fi
 [ -n "$TARBALL" ] && [ -f "$TARBALL" ] || die "找不到 tarball（TARBALL 或 \$ROOT/dsh-better-sidebar-*.tgz）——先运行 pnpm build && pnpm pack"
