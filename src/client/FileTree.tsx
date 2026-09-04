@@ -32,6 +32,7 @@ import { VscFile, VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned
 import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
 import { FenceErrorNotice } from './FenceErrorNotice.tsx'
 import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
+import { useSubmenuFlip } from './menu-flip.ts'
 import type { OpenWithTarget } from './open-with.ts'
 import { relativeTo } from './paths.ts'
 import { t } from './locales.ts'
@@ -147,6 +148,9 @@ export function FileTree(props: {
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
   /** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
   const [rowMenu, setRowMenu] = useState<{ path: string; isDir: boolean; x: number; y: number } | null>(null)
+  // The row menu's "open with" submenu is the one submenu that can tower past
+  // the viewport; publish its flip geometry for layout.css while it is open.
+  useSubmenuFlip(rowMenu)
   /** Whether a file drag hovers the tree (drives the portaled drop zone). */
   const [dropOver, setDropOver] = useState(false)
   /** The directory a drag is hovering right now (null = body, drop to root). */
@@ -373,13 +377,14 @@ export function FileTree(props: {
     if (openWithTargets === undefined || onOpenWith === undefined || openWithTargets.length === 0) return []
     const pinnedIds = openWithPinned ?? []
     /** Brand marks for the built-ins (monochrome silhouettes, currentColor);
-     *  reveal gets the folder glyph, custom editors a generic code mark. */
+     *  reveal gets the folder glyph, custom editors a generic code mark.
+     *  The compact menu's icon slot is 14px, so every mark renders at 14. */
     const itemIcon = (target: OpenWithTarget): ReactNode => {
-      if (target.kind === 'reveal') return <VscFolderOpened size={16} />
-      if (target.id === 'vscode') return <IconVscode16 size={16} />
-      if (target.id === 'cursor') return <SiCursor size={16} />
-      if (target.id === 'zed') return <SiZedindustries size={16} />
-      return <IconCodeOutline16 size={16} />
+      if (target.kind === 'reveal') return <VscFolderOpened size={14} />
+      if (target.id === 'vscode') return <IconVscode16 size={14} />
+      if (target.id === 'cursor') return <SiCursor size={14} />
+      if (target.id === 'zed') return <SiZedindustries size={14} />
+      return <IconCodeOutline16 size={14} />
     }
     const pinned = openWithTargets
       .filter(target => pinnedIds.includes(target.id))
@@ -412,7 +417,7 @@ export function FileTree(props: {
                 onToggleOpenWithPin?.(target.id)
               }}
             >
-              {pinnedNow ? <VscPinned size={14} /> : <VscPin size={14} />}
+              {pinnedNow ? <VscPinned size={12} /> : <VscPin size={12} />}
             </span>
           </span>
         ),
@@ -433,7 +438,7 @@ export function FileTree(props: {
             <IconChevronRightOutline14 size={14} className={css.openWithChevron} aria-hidden />
           </span>
         ),
-        icon: <VscLinkExternal size={16} />,
+        icon: <VscLinkExternal size={14} />,
         submenu,
       },
     ]
@@ -650,22 +655,22 @@ export function FileTree(props: {
         items={[
           // The open escapes head the FILE menu (dirs only get copy).
           ...(rowMenu?.isDir === false && onOpenFileNewTab !== undefined
-            ? [{ id: 'open-new-tab', label: t('openFileNewTab'), icon: <IconCodeOutline16 size={16} /> }]
+            ? [{ id: 'open-new-tab', label: t('openFileNewTab'), icon: <IconCodeOutline16 size={14} /> }]
             : []),
           ...(rowMenu?.isDir === false && onOpenFileSide !== undefined
-            ? [{ id: 'open-side', label: t('openFileSide'), icon: <VscFolderOpened size={16} /> }]
+            ? [{ id: 'open-side', label: t('openFileSide'), icon: <VscFolderOpened size={14} /> }]
             : []),
           ...openWithEntries(),
           // Download applies to files only (the host route refuses directories).
           ...(rowMenu?.isDir === false
-            ? [{ id: 'download', label: t('download'), icon: <IconDownloadOutline16 size={16} /> }]
+            ? [{ id: 'download', label: t('download'), icon: <IconDownloadOutline16 size={14} /> }]
             : []),
           // Upload into a directory (incl. the workspace root row).
           ...(rowMenu?.isDir === true
-            ? [{ id: 'upload-here', label: t('uploadHere'), icon: <IconUploadOutline16 size={16} /> }]
+            ? [{ id: 'upload-here', label: t('uploadHere'), icon: <IconUploadOutline16 size={14} /> }]
             : []),
-          { id: 'relative', label: t('copyRelative'), icon: <IconCopyOutline16 size={16} /> },
-          { id: 'absolute', label: t('copyAbsolute'), icon: <IconCopyOutline16 size={16} /> },
+          { id: 'relative', label: t('copyRelative'), icon: <IconCopyOutline16 size={14} /> },
+          { id: 'absolute', label: t('copyAbsolute'), icon: <IconCopyOutline16 size={14} /> },
         ]}
         onSelect={(id) => {
           const target = rowMenu
@@ -698,6 +703,7 @@ export function FileTree(props: {
           )
         }}
         portal
+        compact
         align="start"
         getAnchorRect={() => (rowMenu === null ? null : new DOMRect(rowMenu.x, rowMenu.y, 0, 0))}
         anchor={<span />}

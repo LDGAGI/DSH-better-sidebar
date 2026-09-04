@@ -2439,15 +2439,16 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
 }
 
 /* The pushpin toggle on an "open with" submenu row: brand ink once the
-   target is pinned to the menu's top level. */
+   target is pinned to the menu's top level. Sized for the compact menu's
+   26px rows (16px box, 12px glyph) — proportionate without overflowing. */
 .openWithPin {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
   color: var(--dsw-alias-label-tertiary);
   cursor: pointer;
 }
