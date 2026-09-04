@@ -131,8 +131,31 @@ body[data-dsh-sidebar-dragging] #root [data-dsh-center-col],
  * closes on the other's outside pointerdown).
  *
  * No max-height/overflow scroll cap here on purpose: overflow clipping
- * would cut the submenu's ::before hover bridge (the 10px corridor that
- * keeps itemWrap's mouseleave from closing the card mid-crossing). */
+ * would cut the submenu's ::before hover bridge (the corridor that keeps
+ * itemWrap's mouseleave from closing the card mid-crossing). */
+
+/* Visual tether, part 1 — the parent row stays lit while its submenu is
+ * open. The primitive only styles :hover, so once the pointer crossed into
+ * the side card the parent row's fill cleared and the floating card read as
+ * unrelated. The Menu marks the open parent row with aria-expanded="true"
+ * (host-rendered, stable), so the same hover token re-applies for the
+ * submenu's whole lifetime. */
+body[data-dsh-sidebar-submenu] div[role="menu"] button[aria-expanded="true"] {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),
+ * with the ::before hover corridor narrowed to match. Ordered BEFORE the
+ * flip overrides below so their left/right flips still win. */
+body[data-dsh-sidebar-submenu] div[role="menu"] div[role="menu"] {
+  left: calc(100% + 4px);
+}
+
+body[data-dsh-sidebar-submenu] div[role="menu"] div[role="menu"]::before {
+  left: -4px;
+  width: 4px;
+}
+
 body[data-dsh-sidebar-submenu~="down"] div[role="menu"] div[role="menu"] {
   top: -4px;
   bottom: auto;
@@ -140,11 +163,11 @@ body[data-dsh-sidebar-submenu~="down"] div[role="menu"] div[role="menu"] {
 
 body[data-dsh-sidebar-submenu~="left"] div[role="menu"] div[role="menu"] {
   left: auto;
-  right: calc(100% + 10px);
+  right: calc(100% + 4px);
 }
 
 /* The hover bridge follows the card to the left side of the parent row. */
 body[data-dsh-sidebar-submenu~="left"] div[role="menu"] div[role="menu"]::before {
   left: auto;
-  right: -10px;
+  right: -4px;
 }

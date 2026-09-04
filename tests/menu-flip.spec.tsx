@@ -24,6 +24,18 @@ describe('layout.css contract', () => {
     expect(css).toContain(`body[${SUBMENU_FLIP_ATTR}~="left"] div[role="menu"] div[role="menu"]`)
     expect(css).toContain(`body[${SUBMENU_FLIP_ATTR}~="left"] div[role="menu"] div[role="menu"]::before`)
   })
+
+  it('keeps the submenu visual tether rules (parent highlight + tight gap)', () => {
+    // Part 1 keeps the parent row lit while its submenu is open (the Menu
+    // marks it aria-expanded); part 2 tightens the card gap to 4px with the
+    // hover corridor narrowed to match. Losing either sends the submenu back
+    // to reading as an unrelated floating card.
+    const css = readFileSync('src/client/layout.css', 'utf8')
+    expect(css).toContain(`body[${SUBMENU_FLIP_ATTR}] div[role="menu"] button[aria-expanded="true"]`)
+    expect(css).toContain('left: calc(100% + 4px)')
+    expect(css).toContain('right: calc(100% + 4px)')
+    expect(css).toContain('width: 4px')
+  })
 })
 
 describe('submenuFlipTokens', () => {

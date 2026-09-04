@@ -278,6 +278,15 @@ export const api = {
     call<FsTextResult | FsBinaryResult>('fs.read', scopePayload(scope, { path }), signal),
   fsWrite: (scope: SessionScope, path: string, content: string) =>
     call<{ ok: true }>('fs.write', scopePayload(scope, { path, content })),
+  /** Rename one tree row within its directory (single-segment name; the
+   *  server refuses existing destinations, the workspace root, and — while
+   *  the fence is armed — anything resolving outside the workspace). */
+  fsRename: (scope: SessionScope, path: string, name: string) =>
+    call<{ path: string }>('fs.rename', scopePayload(scope, { path, name })),
+  /** Permanently delete one tree row (recursive for directories; a symlink
+   *  row unlinks the link only). The UI confirms before calling this. */
+  fsRemove: (scope: SessionScope, path: string) =>
+    call<{ path: string }>('fs.remove', scopePayload(scope, { path })),
   /** Upload one file's raw bytes into `dir` (keeps the folder tree via
    *  `relativePath`); the host streams it under the session workspace. */
   uploadFile: (scope: SessionScope, dir: string, relativePath: string, body: Blob, signal?: AbortSignal) =>

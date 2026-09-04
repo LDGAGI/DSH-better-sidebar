@@ -24,14 +24,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import {
-  IconChevronRightOutline14, IconCodeOutline16, IconCopyOutline16, IconDownloadOutline16,
-  IconLinkOutline16, Menu, type MenuEntry, type MenuItem, writeClipboard,
+  Button, IconChevronRightOutline14, IconCloseFill14, IconCodeOutline16, IconCopyOutline16, IconDownloadOutline16,
+  IconEditOutline16, IconLinkOutline16, IconTrashOutline16, Menu, Modal, type MenuEntry, type MenuItem, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SiCursor, SiZedindustries } from 'react-icons/si'
 import { VscFile, VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
 import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
 import { FenceErrorNotice } from './FenceErrorNotice.tsx'
 import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
+import { isImeComposition } from './ime-guard.ts'
 import { useSubmenuFlip } from './menu-flip.ts'
 import type { OpenWithTarget } from './open-with.ts'
 import { relativeTo } from './paths.ts'
@@ -134,6 +135,10 @@ export function FileTree(props: {
   onToggleOpenWithPin?: (targetId: string) => void
   /** Insert `@<relative path>` into the composer draft (file vs directory). */
   onReferenceFile: (path: string, isDir: boolean) => void
+  /** A rename landed (old row path → new path): the caller retargets open tabs. */
+  onPathRenamed?: (oldPath: string, newPath: string) => void
+  /** A delete landed: the caller closes tabs at or under the removed path. */
+  onPathDeleted?: (path: string, isDir: boolean) => void
   /** Bump to wipe the level cache and reload the visible set. */
   refreshTick: number
   /** Upload into `dir` (absolute, inside the workspace); runs in the caller. */
@@ -141,7 +146,7 @@ export function FileTree(props: {
   /** True while an upload is in flight (drops are ignored). */
   busy: boolean
 }) {
-  const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, refreshTick, onUploadRequest, busy } = props
+  const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy } = props
   const [data, setData] = useState<Record<string, LevelData>>({})
   const dataRef = useRef(data)
   /** The row whose path was just copied ("copied" label replaces its button). */
@@ -151,6 +156,12 @@ export function FileTree(props: {
   // The row menu's "open with" submenu is the one submenu that can tower past
   // the viewport; publish its flip geometry for layout.css while it is open.
   useSubmenuFlip(rowMenu)
+  /** The row being renamed inline: its path plus the edit buffer. */
+  const [renaming, setRenaming] = useState<{ path: string; value: string } | null>(null)
+  /** The delete awaiting the confirmation modal's yes. */
+  const [confirmDelete, setConfirmDelete] = useState<{ path: string; isDir: boolean; name: string } | null>(null)
+  /** The last mutation failure (dismissable strip above the tree). */
+  const [actionError, setActionError] = useState<string | null>(null)
   /** Whether a file drag hovers the tree (drives the portaled drop zone). */
   const [dropOver, setDropOver] = useState(false)
   /** The directory a drag is hovering right now (null = body, drop to root). */
@@ -271,6 +282,63 @@ export function FileTree(props: {
     setData({ ...dataRef.current })
     loadDir(dir)
   }, [loadDir])
+
+  /**
+   * Settle the tree after one rename/delete landed at `prefix`: drop every
+   * cached level at or under the old path, collapse the now-stale expanded
+   * directories below it, and reload the immediate parent so the new shape
+   * shows without a full refresh tick.
+   */
+  const pruneTree = (prefix: string): void => {
+    const parent = parentOf(prefix)
+    const under = (key: string): boolean => key === prefix || key.startsWith(`${prefix}/`) || key.startsWith(`${prefix}\\`)
+    for (const key of Object.keys(dataRef.current)) {
+      if (under(key)) delete dataRef.current[key]
+    }
+    if (parent !== prefix) delete dataRef.current[parent]
+    setData({ ...dataRef.current })
+    for (const dir of expanded) {
+      if (under(dir)) onToggle(dir)
+    }
+    if (parent !== prefix) retryDir(parent)
+  }
+
+  /** Client-side twin of the server's name rule (the server re-validates). */
+  const validRename = (name: string): boolean =>
+    name !== '' && name !== '.' && name !== '..' && !name.includes('/') && !name.includes('\\')
+
+  /** Commit the inline rename: trim, no-op guard, then fs.rename + settle. */
+  const commitRename = (path: string, raw: string): void => {
+    setRenaming(null)
+    const name = raw.trim()
+    if (cwd === undefined || name === baseName(path) || !validRename(name)) {
+      if (name !== baseName(path) && !validRename(name)) setActionError(t('renameInvalid'))
+      return
+    }
+    api.fsRename({ sessionId, cwd }, path, name)
+      .then((result) => {
+        setActionError(null)
+        pruneTree(path)
+        onPathRenamed?.(path, result.path)
+      })
+      .catch((error: unknown) => {
+        setActionError(error instanceof Error ? error.message : String(error))
+      })
+  }
+
+  /** Run the confirmed delete: fs.remove + settle + close affected tabs. */
+  const performDelete = (target: { path: string; isDir: boolean }): void => {
+    if (cwd === undefined) return
+    api.fsRemove({ sessionId, cwd }, target.path)
+      .then(() => {
+        setActionError(null)
+        pruneTree(target.path)
+        onPathDeleted?.(target.path, target.isDir)
+      })
+      .catch((error: unknown) => {
+        setActionError(error instanceof Error ? error.message : String(error))
+      })
+  }
 
   // The caller's refresh tick wipes the cache (declared BEFORE the load
   // effect so the reload below sees the empty cache).
@@ -452,6 +520,58 @@ export function FileTree(props: {
   const expandedSet = useMemo(() => new Set(expanded), [expanded])
   const revealedSet = useMemo(() => new Set(revealed), [revealed])
 
+  /**
+   * Focus + select the rename editor once, on mount. The callback identity
+   * must stay STABLE (useCallback []): an inline arrow re-runs on every
+   * render (detach null → attach el), and focus()/select() mid-keystroke
+   * would reselect the whole buffer while typing. A plain <input>, not the
+   * primitives Input — that one forwards no ref, and focus+select is the
+   * entire point here.
+   */
+  const renameInputRef = useCallback((el: HTMLInputElement | null): void => {
+    if (el !== null) {
+      el.focus()
+      el.select()
+    }
+  }, [])
+
+  /** The inline rename editor replacing one row (dirs and files alike):
+   *  same indent/icon/height for a seamless swap, Enter/blur commits,
+   *  Escape cancels, IME composition keys never reach the handlers (the
+   *  shared isImeComposition guard). */
+  const renderRenameRow = (entry: FsEntry, depth: number): ReactNode => (
+    <div
+      key={entry.path}
+      className={clsx(css.explorerRow, css.explorerRenaming)}
+      style={{ paddingLeft: depth * 22 + 6 }}
+    >
+      {entry.isDir
+        ? (expandedSet.has(entry.path) ? <VscFolderOpened size={14} /> : <VscFolder size={14} />)
+        : <VscFile size={14} />}
+      <input
+        ref={renameInputRef}
+        className={css.explorerRenameInput}
+        value={renaming?.value ?? ''}
+        aria-label={t('rename')}
+        spellCheck={false}
+        onChange={(event) => {
+          setRenaming(prev => prev === null ? prev : { ...prev, value: event.target.value })
+        }}
+        onKeyDown={(event) => {
+          if (isImeComposition(event)) return
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            commitRename(entry.path, renaming?.value ?? '')
+          } else if (event.key === 'Escape') {
+            event.preventDefault()
+            setRenaming(null)
+          }
+        }}
+        onBlur={() => { commitRename(entry.path, renaming?.value ?? '') }}
+      />
+    </div>
+  )
+
   const renderLevel = (dir: string, depth: number): ReactNode => {
     const level = data[dir]
     if (level === undefined) {
@@ -476,6 +596,10 @@ export function FileTree(props: {
     }
     const entries = level.entries ?? []
     return entries.map(entry => {
+      // The row being renamed renders as its editor (no button semantics:
+      // an editor is not a click target — and a nested interactive inside
+      // role="button" would be invalid anyway).
+      if (renaming?.path === entry.path) return renderRenameRow(entry, depth)
       if (entry.isDir) {
         const isOpen = expandedSet.has(entry.path)
         return (
@@ -556,6 +680,22 @@ export function FileTree(props: {
         <div className={css.explorerEmpty}>{t('noSession')}</div>
       ) : (
         <>
+          {/* The last mutation failure (rename/delete): dismissable, raw
+              server text — the same show-the-truth policy the fence notice
+              uses. Any later action or a fresh attempt clears it. */}
+          {actionError !== null && (
+            <div className={css.explorerActionError} role="alert">
+              <span className={css.explorerActionErrorText}>{actionError}</span>
+              <button
+                type="button"
+                className={css.explorerActionErrorClose}
+                aria-label={t('dismiss')}
+                onClick={() => { setActionError(null) }}
+              >
+                <IconCloseFill14 />
+              </button>
+            </div>
+          )}
           <div
             className={clsx(css.explorerRow, dropTarget === root && css.explorerRowDropTarget)}
             style={{ paddingLeft: 6 }}
@@ -671,6 +811,15 @@ export function FileTree(props: {
             : []),
           { id: 'relative', label: t('copyRelative'), icon: <IconCopyOutline16 size={14} /> },
           { id: 'absolute', label: t('copyAbsolute'), icon: <IconCopyOutline16 size={14} /> },
+          // Explorer mutations close the menu; the workspace ROOT row is the
+          // session itself — never renamable or deletable (server double-guards).
+          ...(rowMenu !== null && rowMenu.path !== cwd
+            ? [
+                { id: 'mutate-sep', type: 'separator' } as MenuEntry,
+                { id: 'rename', label: t('rename'), icon: <IconEditOutline16 size={14} /> },
+                { id: 'delete', label: t('delete'), icon: <IconTrashOutline16 size={14} />, danger: true },
+              ]
+            : []),
         ]}
         onSelect={(id) => {
           const target = rowMenu
@@ -697,6 +846,14 @@ export function FileTree(props: {
             fileInputRef.current?.click()
             return
           }
+          if (id === 'rename') {
+            setRenaming({ path: target.path, value: baseName(target.path) })
+            return
+          }
+          if (id === 'delete') {
+            setConfirmDelete({ path: target.path, isDir: target.isDir, name: baseName(target.path) })
+            return
+          }
           copyPath(
             id === 'relative' ? relativeTo(cwd ?? '', target.path) : target.path,
             target.path,
@@ -708,6 +865,36 @@ export function FileTree(props: {
         getAnchorRect={() => (rowMenu === null ? null : new DOMRect(rowMenu.x, rowMenu.y, 0, 0))}
         anchor={<span />}
       />
+
+      {/* The delete confirmation: destructive and permanent (no host trash),
+          so it always lands here first — the same Cancel/Confirm shape the
+          git lens uses for discard/revert/cherry-pick. */}
+      <Modal
+        open={confirmDelete !== null}
+        onClose={() => { setConfirmDelete(null) }}
+        title={confirmDelete === null ? '' : t('deleteTitle', { name: confirmDelete.name })}
+        closeLabel={t('cancel')}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => { setConfirmDelete(null) }}>{t('cancel')}</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const pending = confirmDelete
+                if (pending === null) return
+                setConfirmDelete(null)
+                performDelete(pending)
+              }}
+            >
+              {t('delete')}
+            </Button>
+          </>
+        )}
+      >
+        <p className={css.explorerConfirmDesc}>
+          {confirmDelete === null ? '' : t(confirmDelete.isDir ? 'deleteDescDir' : 'deleteDescFile')}
+        </p>
+      </Modal>
     </div>
   )
 }
