@@ -267,12 +267,6 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 > 📌 **正式版**（npm `latest`）：本版仅支持 **DSH 0.1.2-rc.1+**（peer 下限 `^0.1.2-rc.1`）；不再支持 0.1.0-rc.8 ~ 0.1.1-rc.2——DSH stable 用户请固定安装 `dsh-better-sidebar@0.17.1`，停留在 0.1.2-alpha.x 的宿主继续用 `dsh-better-sidebar@alpha`（v0.18.0-alpha.0）。
 
-自 v0.17.1 以来的全部更改（v0.18.1-alpha.0 / v0.19.0-alpha.0 两个中间版本号未发布，内容一并并入本版）：
-
-**🔗 宿主线毕业正式版**
-
-- **进入 DSH 0.1.2 线并毕业**：v0.18.0-alpha.0 删除 0.1.1-rc.x 兼容层、修复 alpha.1+ 侧边对话转录空白（#472）；基线经 alpha.3（#497）、alpha.5（#516，`Session.events` → `snapshotEvents()`）逐步上行；聊天文件打开漏斗迁移 `remote.session.openWorkspacePath`（#494）、「Show in folder」reveal 滚动限界（#453）。本版钉版基线 **DSH 0.1.2-rc.1**（相对 alpha.5 零源码变化、纯版本升级；`dsh-client-locale` 恢复发版，全线对齐 rc.1；CI 真机挂载冒烟 14/14）
-
 **✨ 新功能**
 
 - 🌿 **「文件变动」统一 tab**（#475）：Git 视角（真 diff / 历史 / 暂存·提交·还原 / worktree·子仓库选择）与本轮文件视角（模型读/写/编辑实时追踪）双视角合一；统一 diff 渲染（改蓝配对 + 行内字符级高亮 + 语法着色 + 上下文折叠）、底部可拖拽预览面板、一键展开独立 diff tab
@@ -297,6 +291,9 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 **🌐 生态收录**
 
 - 新收录 10+ 插件：dsh-better-sidebar-icons（#441）、dsh-sidenote（#451，原 dsh-sidechat #470）、dsh-github-workbench（#410）、dsh-bilingual-reader（#379）、dsh-server-deck（#413）、dsh-md-export（#405）、dsh-code-nav（#404）、dsh-suhuang-scroll（#392）、dsh-better-overleaf（#370）等（均含 18+ 语言 i18n 补齐）
+
+<details>
+<summary><b>历史版本（v0.12.0 – v0.15.2）</b></summary>
 
 ### v0.19.0-alpha.0
 
@@ -369,9 +366,6 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 - 🔄 **浏览器嵌入探测 GET 兜底**（[#69](https://github.com/omdsh-dev/DSH-better-sidebar/pull/69)）：HEAD 响应同时缺 CSP 与 X-Frame-Options 时回退 GET 重试一次——阿里云百炼等只在 GET 回头发嵌入策略的站点不再显示误导性「拒绝连接请求」，而是正确显示「该站点拒绝嵌入」面板 + 「在浏览器中打开」
 - 🔧 **git 源安装修复 `unrun` devDependency**（[#336](https://github.com/omdsh-dev/DSH-better-sidebar/pull/336)）：tsdown 0.22 经 `unrun` 加载配置而 pnpm 11 不自动装 peer——git-hosted 安装的 `prepare` 不再报 `Failed to import module "unrun"`（npm tarball 不受影响）
 - 🍃 **`ctx.effect` 严格化顺手修了 4 处**：拦截注册失败时 effect 体返回 `undefined` 改为 no-op disposer（vendored cordis 的 effect 契约要求返回 disposer，返回 `undefined` 属非法形状）
-
-<details>
-<summary><b>历史版本（v0.12.0 – v0.15.2）</b></summary>
 
 ### v0.15.2
 
@@ -491,7 +485,7 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 推荐添加QQ群(577011007)
 
 <div align="center">
-  <img width="220" alt="微信群二维码" src="https://github.com/user-attachments/assets/39caafc7-9629-4b13-bb2b-eac17eab5b6a" />
+  <img width="220" alt="微信群二维码" src="https://github.com/user-attachments/assets/cbf211c6-e5b8-49c3-a412-7210c0b33d73" />
   <img width="220" alt="QQ群二维码" src="https://github.com/user-attachments/assets/9be34629-26ef-4537-aad4-1393c147f81c" />
 </div>
 
