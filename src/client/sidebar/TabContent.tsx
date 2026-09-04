@@ -69,6 +69,7 @@ export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: Ses
       id: d.id,
       label: typeof d.title === 'function' ? d.title() : d.title,
       disabled: !(d.available?.(ctx, scope, state) ?? true),
-      icon: typeof d.icon === 'function' ? d.icon(16) : d.icon,
+      // 14 matches the compact + menu's icon slot (compactList .itemIcon).
+      icon: typeof d.icon === 'function' ? d.icon(14) : d.icon,
     }))
 }
