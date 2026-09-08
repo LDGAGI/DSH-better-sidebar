@@ -172,6 +172,57 @@ describe('fileIcon resolver chain (specific → builtin → catch-all → VscFil
   })
 })
 
+describe('name matching (names / folderNames — the icon-theme half)', () => {
+  it('a names rule claims the exact basename, case-insensitively', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    service.registerFileIcon({ id: 'npm', names: ['package.json'], icon: marker })
+    expect(service.matchFileIcon('/w/package.json')?.id).toBe('npm')
+    expect(service.matchFileIcon('/w/Package.JSON')?.id).toBe('npm')
+    expect(service.matchFileIcon('/w/pkg.json')).toBeUndefined()
+  })
+
+  it('a name rule outranks an extension rule and the built-in glyph', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    service.registerFileIcon({ id: 'by-ext', exts: ['json'], icon: markerB })
+    service.registerFileIcon({ id: 'by-name', names: ['package.json'], icon: marker })
+    expect(service.matchFileIcon('/w/package.json')?.id).toBe('by-name')
+    expect(glyphOf(service.fileIcon('/w/package.json', 14))).toBe('span')
+    // Other json files still take the extension rule.
+    expect(glyphOf(service.fileIcon('/w/tsconfig.json', 14))).toBe('b')
+  })
+
+  it('a folderNames rule claims only the directories it names, and outranks the reserved exts', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    service.registerFileIcon({ id: 'all-dirs', exts: ['folder', 'folder-open'], icon: markerB })
+    service.registerFileIcon({ id: 'named', folderNames: ['node_modules'], icon: marker })
+    expect(service.matchFolderIcon(false, 'node_modules')?.id).toBe('named')
+    expect(service.matchFolderIcon(false, 'NODE_MODULES')?.id).toBe('named')
+    // An unnamed directory still takes the reserved-ext registration.
+    expect(service.matchFolderIcon(false, 'src')?.id).toBe('all-dirs')
+    // A descriptor with folderNames only never claims unnamed directories.
+    const solo = createBetterSidebarService(createSidebarStore())
+    solo.registerFileIcon({ id: 'named', folderNames: ['src'], icon: marker })
+    expect(solo.matchFolderIcon(false, 'lib')).toBeUndefined()
+    expect(glyphOf(solo.folderIcon('/w/lib', false, 14))).toBe(VscFolder)
+  })
+
+  it('the folder factory receives the open flag so one descriptor renders both states', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    const seen: (boolean | undefined)[] = []
+    service.registerFileIcon({
+      id: 'stateful',
+      folderNames: ['src'],
+      icon: (_path, _size, open) => {
+        seen.push(open)
+        return open === true ? marker() : markerB()
+      },
+    })
+    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe('b')
+    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe('span')
+    expect(seen).toEqual([false, true])
+  })
+})
+
 describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)', () => {
   it('unregistered directories show the builtin glyphs', () => {
     const service = createBetterSidebarService(createSidebarStore())

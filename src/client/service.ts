@@ -27,7 +27,7 @@ import {
   type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab,
 } from './state.ts'
 import { isNarrowWidth } from './breakpoints.ts'
-import { extOf } from './paths.ts'
+import { baseName, extOf } from './paths.ts'
 import { builtinFileIconOf, builtinFolderIcon, fallbackFileIcon } from './file-icons.tsx'
 import type { SessionScope } from './api.ts'
 import type { SidebarPrefs } from '../prefs-shared.ts'
@@ -339,15 +339,36 @@ export interface FileIconDescriptor {
    * Lowercase extensions without leading dot (`['csv','tsv']`). `[]` = the
    * global default (catch-all): it only claims files the built-in glyph map
    * does not cover — registered specifics and built-in glyphs always outrank
-   * it. Two values are RESERVED for directory rows (never matched against
-   * real file extensions): `'folder'` (a closed directory) and
-   * `'folder-open'` (an expanded directory) — see `FOLDER_EXT`.
+   * it. OMITTED = no extension rule at all (a `names`-only registration is
+   * NOT a catch-all). Two values are RESERVED for directory rows (never
+   * matched against real file extensions): `'folder'` (a closed directory)
+   * and `'folder-open'` (an expanded directory) — see `FOLDER_EXT`.
    */
-  exts: readonly string[]
+  exts?: readonly string[]
+  /**
+   * Exact FILE names (basename, case-insensitive — `['package.json',
+   * 'Dockerfile']`), the `fileNames` half of an icon theme. Name matches
+   * outrank extension matches, so a theme can color `package.json` apart
+   * from every other `.json`. Omitted/`[]` = no name rule.
+   */
+  names?: readonly string[]
+  /**
+   * Exact DIRECTORY names (basename, case-insensitive — `['node_modules',
+   * 'src']`), the `folderNames` half of an icon theme. A name match outranks
+   * the reserved `'folder'`/`'folder-open'` exts, and a descriptor with
+   * `folderNames` only claims the directories it names (never every folder —
+   * that is what the reserved exts are for). Omitted/`[]` = no name rule.
+   */
+  folderNames?: readonly string[]
   /** Higher wins; default 0. Registered icons always outrank the built-in map. */
   priority?: number
-  /** Size-aware icon factory (the tree and file tabs render at 14 today). */
-  icon: (path: string, size: number) => ReactNode
+  /**
+   * Size-aware icon factory (the tree and file tabs render at 14 today).
+   * `open` is the directory's expanded state for a DIRECTORY row and
+   * `undefined` for a file row — a folder icon uses it to pick between the
+   * closed and opened glyph.
+   */
+  icon: (path: string, size: number, open?: boolean) => ReactNode
 }
 
 /**
@@ -389,23 +410,26 @@ export interface BetterSidebarService {
   getFileIcons(): readonly FileIconDescriptor[]
   /**
    * Find a SPECIFIC registered file icon for a path (priority desc, then
-   * registration order). Catch-alls (`exts: []`) and folder registrations
-   * (`'folder'`/`'folder-open'`) are not consulted — this answers "did a
-   * registration claim this exact extension". Consumers should prefer
+   * registration order): a `names` match first, then an `exts` match.
+   * Catch-alls (`exts: []`) and folder registrations (`'folder'`/
+   * `'folder-open'`) are not consulted — this answers "did a registration
+   * claim this exact name or extension". Consumers should prefer
    * `fileIcon`/`folderIcon`, which run the whole fallback chain.
    */
   matchFileIcon(path: string): FileIconDescriptor | undefined
   /**
    * Find the registered icon for DIRECTORY rows (priority desc, then
-   * registration order): `open` picks between the `'folder'` and
-   * `'folder-open'` reserved exts. Undefined = fall back to the built-in
-   * VSCodicons folder glyphs.
+   * registration order): a `folderNames` match on `name` first (pass the
+   * directory's basename), then the `'folder'`/`'folder-open'` reserved
+   * exts by `open`. Undefined = fall back to the built-in VSCodicons folder
+   * glyphs.
    */
-  matchFolderIcon(open: boolean): FileIconDescriptor | undefined
+  matchFolderIcon(open: boolean, name?: string): FileIconDescriptor | undefined
   /**
    * The authoritative FILE icon for a path (feature `fileIcons`), running
    * the whole chain with per-factory crash isolation:
-   * 1. a specific registered extension (priority desc, registration order),
+   * 1. a specific registered name or extension (priority desc, registration
+   *    order),
    * 2. the built-in monochrome glyph map (md/media/pdf/json/code/...),
    * 3. the best registered global default (`exts: []`, priority desc),
    * 4. the generic `VscFile`.
@@ -415,9 +439,11 @@ export interface BetterSidebarService {
   fileIcon(path: string, size: number): ReactNode
   /**
    * The authoritative DIRECTORY icon for a tree row: the registered
-   * `'folder'`/`'folder-open'` icon (priority desc), else the built-in
-   * `VscFolder`/`VscFolderOpened`. `path` is the directory's own path (a
-   * theme may vary icons per directory). Same crash isolation as `fileIcon`.
+   * `folderNames`/`'folder'`/`'folder-open'` icon (priority desc), else the
+   * built-in `VscFolder`/`VscFolderOpened`. `path` is the directory's own
+   * path (a theme may vary icons per directory); `open` reaches the factory
+   * so one descriptor can render both states. Same crash isolation as
+   * `fileIcon`.
    */
   folderIcon(path: string, open: boolean, size: number): ReactNode
   /** Find a tab descriptor by id (undefined if not registered). */
@@ -555,7 +581,8 @@ export const SIDEBAR_SERVICE_VERSION = '0.18.1'
  *   id focus targets RAISE the floating window (never duplicate the tab or
  *   expand panels), closeTab on a floating tab closes it with its window.
  * - 'fileIcons' (v0.19.0): registerFileIcon/getFileIcons/matchFileIcon —
- *   external per-extension file-tree icons overriding the built-in glyphs.
+ *   external file-tree icons overriding the built-in glyphs, by extension
+ *   (`exts`), exact file name (`names`), or directory name (`folderNames`).
  */
 export const SIDEBAR_FEATURES = [
   'badge',
@@ -655,45 +682,60 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
 
   // Specific registrations only: catch-alls (`exts: []`) and folder
   // registrations (`'folder'`/`'folder-open'`) are skipped, and the reserved
-  // folder values never match a real file's extension. The built-in glyph
-  // map is not consulted here — an undefined result IS the "fall through"
-  // signal the `fileIcon` resolver acts on.
+  // folder values never match a real file's extension. Name rules (`names`)
+  // outrank extension rules. The built-in glyph map is not consulted here —
+  // an undefined result IS the "fall through" signal the `fileIcon` resolver
+  // acts on.
   const matchFileIcon = (path: string): FileIconDescriptor | undefined => {
     const ext = extOf(path)
     // Reserved folder values never claim a real file: `x.folder` falls
     // through to the built-in/catch-all chain like any unknown extension.
-    if (ext === FOLDER_EXT || ext === FOLDER_OPEN_EXT) return undefined
-    for (const d of rankedFileIcons()) {
-      if (d.exts.includes(ext)) return d
+    const reserved = ext === FOLDER_EXT || ext === FOLDER_OPEN_EXT
+    const name = baseName(path).toLowerCase()
+    const ranked = rankedFileIcons()
+    for (const d of ranked) {
+      if (d.names?.some(entry => entry.toLowerCase() === name) === true) return d
+    }
+    if (reserved) return undefined
+    for (const d of ranked) {
+      if (d.exts?.includes(ext) === true) return d
     }
     return undefined
   }
 
-  // Directory rows have no extension: the reserved `'folder'`/`'folder-open'`
-  // exts are the only claim surface (a catch-all never claims a directory).
-  const matchFolderIcon = (open: boolean): FileIconDescriptor | undefined => {
+  // Directory rows: a `folderNames` match on the directory's own basename
+  // first, then the reserved `'folder'`/`'folder-open'` exts (a catch-all
+  // never claims a directory).
+  const matchFolderIcon = (open: boolean, name?: string): FileIconDescriptor | undefined => {
+    const ranked = rankedFileIcons()
+    if (name !== undefined) {
+      const wanted = name.toLowerCase()
+      for (const d of ranked) {
+        if (d.folderNames?.some(entry => entry.toLowerCase() === wanted) === true) return d
+      }
+    }
     const want = open ? FOLDER_OPEN_EXT : FOLDER_EXT
-    for (const d of rankedFileIcons()) {
-      if (d.exts.includes(want)) return d
+    for (const d of ranked) {
+      if (d.exts?.includes(want) === true) return d
     }
     return undefined
   }
 
   /** Run one registered factory; a throw is logged and returns undefined. */
-  const safeIcon = (d: FileIconDescriptor, path: string, size: number): ReactNode => {
+  const safeIcon = (d: FileIconDescriptor, path: string, size: number, open?: boolean): ReactNode => {
     try {
-      return d.icon(path, size)
+      return d.icon(path, size, open)
     } catch (error) {
       console.error(`[dsh-better-sidebar] file icon factory "${d.id}" error:`, error)
       return undefined
     }
   }
 
-  // The authoritative file-icon chain (see the interface doc): specific
-  // registration → built-in glyph → best catch-all → stock VscFile. The
-  // catch-all ranks by priority desc then registration order (first wins);
-  // an unclaimed extension reaching it is exactly "nothing specified falls
-  // back to the (registered or stock) default".
+  // The authoritative file-icon chain (see the interface doc): specific name
+  // or extension registration → built-in glyph → best catch-all → stock
+  // VscFile. The catch-all ranks by priority desc then registration order
+  // (first wins); an unclaimed extension reaching it is exactly "nothing
+  // specified falls back to the (registered or stock) default".
   const fileIcon = (path: string, size: number): ReactNode => {
     const specific = matchFileIcon(path)
     if (specific !== undefined) {
@@ -703,7 +745,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     const builtin = builtinFileIconOf(path)
     if (builtin !== undefined) return builtin(size)
     for (const d of rankedFileIcons()) {
-      if (d.exts.length === 0) {
+      if (d.exts !== undefined && d.exts.length === 0) {
         const icon = safeIcon(d, path, size)
         if (icon !== undefined) return icon
       }
@@ -711,13 +753,14 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     return fallbackFileIcon(size)
   }
 
-  // Directory rows: registered folder/folder-open icon, else the built-in
-  // VSCodicons glyphs. The row's path feeds the factory (a theme may vary
-  // icons per directory).
+  // Directory rows: registered folderNames/folder/folder-open icon, else the
+  // built-in VSCodicons glyphs. The row's path feeds the factory (a theme may
+  // vary icons per directory) and `open` lets one descriptor render both
+  // states.
   const folderIcon = (path: string, open: boolean, size: number): ReactNode => {
-    const registered = matchFolderIcon(open)
+    const registered = matchFolderIcon(open, baseName(path))
     if (registered !== undefined) {
-      const icon = safeIcon(registered, path, size)
+      const icon = safeIcon(registered, path, size, open)
       if (icon !== undefined) return icon
     }
     return builtinFolderIcon(open, size)
