@@ -20,6 +20,7 @@ import { RenderBoundary } from './RenderBoundary.tsx'
 import { registerOpenPathInterception, registerTurnTailInterception } from './intercept.tsx'
 import { registerLinkInterception } from './link-intercept.ts'
 import { registerImeGuard } from './ime-guard.ts'
+import { createFileIconThemeLoader } from './file-icon-theme.ts'
 import { registerSettingsNavIcon } from './settings-nav-icon.ts'
 import { loadBootDecision } from './prefs.ts'
 import { SideCardSection } from './SideCardSection.tsx'
@@ -164,6 +165,21 @@ export function apply(ctx: Context): void {
     () => registerBuiltins(ctx, service, { terminalTitle: () => terminalTitle }),
     'dsh-better-sidebar: register built-in tabs and viewers',
   )
+  // Optional colored file-icon theme: the `fileIconTheme` pref decides whether
+  // the lazy `file-icons` chunk is fetched and its dataset registered through
+  // `registerFileIcon`. The loader reacts to prefs writes and is disposed with
+  // the fiber (HMR-safe); 'builtin' (the default) keeps the startup path free
+  // of icon data.
+  ctx.effect(() => {
+    const loader = createFileIconThemeLoader(service)
+    const sync = (): void => { loader.set(sidebarStore.getPrefs().fileIconTheme) }
+    sync()
+    const unsubscribe = service.subscribeState(sync)
+    return () => {
+      unsubscribe()
+      loader.dispose()
+    }
+  }, 'dsh-better-sidebar: colored file-icon theme')
   // A failure anywhere in the client lifecycle must never take the app down
   // silently: log with the plugin prefix and pin a visible diagnostic strip
   // to the page so a blank panel is never the only symptom. This strip is

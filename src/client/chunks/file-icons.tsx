@@ -20,6 +20,7 @@
  * imported by the core bundle; keep it that way.
  */
 import type { ReactNode } from 'react'
+import type { BetterSidebarService, FileIconDescriptor } from '../service.ts'
 import {
   SiAngular, SiApple, SiAstro, SiBabel, SiBiome, SiBun, SiC, SiClojure,
   SiCmake, SiCoffeescript, SiComposer, SiConventionalcommits, SiCplusplus,
@@ -38,7 +39,7 @@ import {
 } from 'react-icons/si'
 import {
   VscBook, VscFile, VscFileBinary, VscFileCode, VscFileMedia, VscFilePdf,
-  VscFileText, VscFileZip, VscJson, VscKey,
+  VscFileText, VscFileZip, VscFolder, VscFolderOpened, VscJson, VscKey,
   VscMap, VscMusic, VscSettings, VscTerminalCmd, VscTerminalPowershell
 } from 'react-icons/vsc'
 import type { IconType } from 'react-icons'
@@ -691,4 +692,82 @@ export const FOLDER_COLOR: Record<string, string> = {
   android: '#3DDC84',
   ios: '#000000',
   Platforms: '#3178C6',
+}
+
+// ── Registration ────────────────────────────────────────────────────────
+
+/**
+ * Register the dataset through the public `registerFileIcon` API: one
+ * descriptor per distinct glyph+color (the resolver walks descriptors per
+ * row, so 563 rules collapse into ~250 registrations), plus one per folder
+ * tint. Returns a disposer that removes every registration.
+ *
+ * Folder tints ride `folderNames` only — they claim the directories they
+ * name, never every folder, so unnamed directories keep the built-in glyphs.
+ */
+export function registerColoredFileIcons(service: BetterSidebarService): () => void {
+  const disposers: (() => void)[] = []
+  const register = (descriptor: FileIconDescriptor): void => {
+    disposers.push(service.registerFileIcon(descriptor))
+  }
+  let seq = 0
+
+  // Extensions: group the table by (glyph, color) → one descriptor per group.
+  for (const [Icon, byColor] of groupByGlyph(FILE_ICON_BY_EXT)) {
+    for (const [color, exts] of byColor) {
+      register({
+        id: `colored:ext:${seq++}`,
+        exts,
+        icon: (_path, size) => colored({ Icon, color }, size),
+      })
+    }
+  }
+
+  // Exact file names (package.json, Dockerfile, …): same grouping, name rules.
+  for (const [Icon, byColor] of groupByGlyph(FILE_ICON_BY_NAME)) {
+    for (const [color, names] of byColor) {
+      register({
+        id: `colored:name:${seq++}`,
+        names,
+        icon: (_path, size) => colored({ Icon, color }, size),
+      })
+    }
+  }
+
+  // Directory tints: VscFolder/VscFolderOpened in the rule's color, grouped
+  // by color (the folder table maps name → color, not name → glyph).
+  const foldersByColor = new Map<string, string[]>()
+  for (const [name, color] of Object.entries(FOLDER_COLOR)) {
+    const names = foldersByColor.get(color)
+    if (names === undefined) foldersByColor.set(color, [name])
+    else names.push(name)
+  }
+  for (const [color, folderNames] of foldersByColor) {
+    register({
+      id: `colored:folder:${seq++}`,
+      folderNames,
+      icon: (_path, size, open) => open === true
+        ? <VscFolderOpened size={size} style={{ color }} />
+        : <VscFolder size={size} style={{ color }} />,
+    })
+  }
+
+  return () => { for (const dispose of disposers) dispose() }
+}
+
+/** Regroup one name→{Icon,color} table into Icon → color → keys. */
+function groupByGlyph(table: Partial<Record<string, IconEntry>>): Map<IconType, Map<string, string[]>> {
+  const grouped = new Map<IconType, Map<string, string[]>>()
+  for (const [key, entry] of Object.entries(table)) {
+    if (entry === undefined) continue
+    let byColor = grouped.get(entry.Icon)
+    if (byColor === undefined) {
+      byColor = new Map()
+      grouped.set(entry.Icon, byColor)
+    }
+    const keys = byColor.get(entry.color)
+    if (keys === undefined) byColor.set(entry.color, [key])
+    else keys.push(key)
+  }
+  return grouped
 }

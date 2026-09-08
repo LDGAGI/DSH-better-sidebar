@@ -950,6 +950,7 @@ describe('side card settings routes', () => {
         interceptOpenPath: true,
         editorExplorer: false,
         workspaceFence: true,
+        fileIconTheme: 'builtin',
         terminalShell: '',
         terminalShellArgs: '',
         titleBarCompat: false,

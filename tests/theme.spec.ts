@@ -13,6 +13,8 @@
  */
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { colorAlpha, effectiveTokenValue, tokenValue } from '../src/client/theme.ts'
 
 afterEach(() => {
@@ -78,5 +80,41 @@ describe('effectiveTokenValue', () => {
     document.body.style.setProperty('--probe', 'transparent')
     expect(tokenValue('--probe')).toBe('transparent')
     expect(effectiveTokenValue('--probe')).toBe('')
+  })
+})
+
+/**
+ * Skin contract (guide §12): every visual value rides a `--dsw-alias-*` /
+ * `--dsw-font-*` / `--ds-*` token. The ONE documented exception is the
+ * optional colored icon theme: brand colors are identity, not chrome, so
+ * they are hardcoded — but only inside the lazy `file-icons` chunk, which
+ * the core bundle must never import. This guards that boundary.
+ */
+// jsdom has no file:// import.meta.url; vitest runs from the repo root.
+const ROOT = process.cwd()
+
+describe('skin contract boundary for hardcoded icon colors', () => {
+  const coreIconModules = ['src/client/file-icons.tsx', 'src/client/file-icon-theme.ts']
+
+  it('the core icon modules carry no color literals', () => {
+    for (const file of coreIconModules) {
+      const source = readFileSync(resolve(ROOT, file), 'utf8')
+      expect(source, file).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+      expect(source, file).not.toMatch(/\brgba?\(/)
+    }
+  })
+
+  it('only the lazy chunk may carry the colored dataset, and the core never imports it statically', () => {
+    const chunk = readFileSync(resolve(ROOT, 'src/client/chunks/file-icons.tsx'), 'utf8')
+    expect(chunk).toMatch(/#[0-9a-fA-F]{6}/)
+    const clientDir = resolve(ROOT, 'src/client')
+    const offenders: string[] = []
+    for (const entry of readdirSync(clientDir, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !/\.tsx?$/.test(entry.name)) continue
+      const path = resolve(entry.parentPath, entry.name)
+      if (path.includes('/chunks/')) continue
+      if (/from '[^']*chunks\/file-icons/.test(readFileSync(path, 'utf8'))) offenders.push(path)
+    }
+    expect(offenders).toEqual([])
   })
 })

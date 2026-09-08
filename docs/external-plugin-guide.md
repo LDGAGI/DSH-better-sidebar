@@ -722,6 +722,16 @@ if (ctx.betterSidebar.features.includes('fileIcons')) {
 注册/注销即时生效（文件树与 tab 栏订阅注册表变化自动重渲染）；图标工厂抛错会被吞掉
 （console.error 后跳到回退链下一级），不会空白行。
 
+**内置的可选彩色图标主题**（v0.19.0+，设置页「文件 → 文件图标」）：
+
+- `'builtin'`（默认）＝上面的单色 glyph 映射，零额外加载。
+- `'colored'`＝563 条品牌/通用彩色规则（218 扩展名 + 197 文件名 + 148 目录名），
+  数据在**懒加载 chunk** `lib/client-file-icons.js`（`/sidebar/bundle/file-icons.js`），
+  只有用户选中时才拉取，选中后走 `registerFileIcon` 注册、切回即注销（`src/client/file-icon-theme.ts`）。
+  数据来自 [PR #429](https://github.com/omdsh-dev/DSH-better-sidebar/pull/429)（@fenter）。
+- 因此彩色图标是**皮肤契约 §12 的唯一豁免面**：品牌色是内容而非 chrome，不能走
+  `--dsw-alias-*`；豁免只覆盖这个 chunk（核心图标模块零颜色字面量，由 `tests/theme.spec.ts` 守护）。
+
 **版本与能力探测**（v0.12.0+）：消费插件先查能力再使用新 API，老版本（或旧 DSH）下优雅降级：
 
 ```ts
@@ -852,6 +862,13 @@ ctx.effect(() =>
 ## 12. 皮肤兼容（令牌驱动）
 
 > better-sidebar 所有视觉值消费 DSH 的 `--dsw-alias-*` / `--dsw-font-*` / `--ds-*` 令牌（无硬编码颜色），**不做每皮肤适配**。已与 dsh-web-ui 皮肤中心兼容（10 款皮肤全覆盖 `--dsw-alias-*` 层；`tests/theme.spec.ts` 守护）。你的 tab/viewer 组件遵循同样的令牌规则即可自动兼容全部皮肤。
+>
+> **唯一豁免面**：可选彩色文件图标主题（`fileIconTheme: 'colored'`）在
+> `src/client/chunks/file-icons.tsx` 内硬编码品牌色——品牌色是内容标识而非 chrome，无法
+> 映射到语义令牌；豁免的三个前提是「用户显式开启」「数据只在懒加载 chunk」「核心图标
+> 模块零颜色字面量」（`tests/theme.spec.ts` 的 boundary 用例守护）。插件自己注册的
+> 图标（`registerFileIcon`）颜色由注册方负责，同样不受本节令牌约束，但**不要**把彩色
+> 图标塞进核心 bundle 的常驻渲染路径。
 
 ### 12.1 规则
 
