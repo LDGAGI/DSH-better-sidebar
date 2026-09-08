@@ -35,7 +35,9 @@ const glyphOf = (node: ReactNode): unknown => (node as ReactElement).type
 /** A marker component standing in for a plugin's registered icon. */
 const marker = (): ReactNode => <span data-marker />
 
-const markerB = (): ReactNode => <span data-marker-b />
+/** A second marker with a DISTINCT element type, so `glyphOf` can tell the
+ *  two registrations apart in priority/ordering assertions. */
+const markerB = (): ReactNode => <b data-marker-b />
 
 describe('file icon registration API', () => {
   it('registerFileIcon adds to the registry and dispose removes it', () => {
@@ -80,6 +82,22 @@ describe('file icon registration API', () => {
   it('the feature is advertised in SIDEBAR_FEATURES', () => {
     expect(SIDEBAR_FEATURES.includes('fileIcons')).toBe(true)
   })
+
+  it('register and dispose notify subscribers (mounted rows re-resolve, no reload)', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    let notified = 0
+    const unsubscribe = service.subscribe(() => { notified += 1 })
+    const dispose = service.registerFileIcon({ id: 'test:icons', exts: ['csv'], icon: marker })
+    expect(notified).toBe(1)
+    dispose()
+    expect(notified).toBe(2)
+    // A second dispose is a no-op — no spurious notification.
+    dispose()
+    expect(notified).toBe(2)
+    unsubscribe()
+    service.registerFileIcon({ id: 'test:other', exts: ['tsv'], icon: marker })
+    expect(notified).toBe(2)
+  })
 })
 
 describe('fileIcon resolver chain (specific → builtin → catch-all → VscFile)', () => {
@@ -102,6 +120,23 @@ describe('fileIcon resolver chain (specific → builtin → catch-all → VscFil
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'all-a', exts: [], icon: marker })
     service.registerFileIcon({ id: 'all-b', exts: [], priority: 5, icon: markerB })
+    // markerB ('b') is the higher-priority catch-all — not merely "some span".
+    expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe('b')
+    const tie = createBetterSidebarService(createSidebarStore())
+    tie.registerFileIcon({ id: 'first', exts: [], icon: marker })
+    tie.registerFileIcon({ id: 'second', exts: [], icon: markerB })
+    // Equal priority keeps registration order (the first-registered wins).
+    expect(glyphOf(tie.fileIcon('/w/Makefile', 14))).toBe('span')
+  })
+
+  it('a factory returning undefined declines that link and the chain continues', () => {
+    const service = createBetterSidebarService(createSidebarStore())
+    service.registerFileIcon({ id: 'md-decline', exts: ['md'], icon: () => undefined })
+    // The specific registration declined → the built-in glyph claims it.
+    expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(VscMarkdown)
+    service.registerFileIcon({ id: 'all-decline', exts: [], priority: 10, icon: () => undefined })
+    service.registerFileIcon({ id: 'all-take', exts: [], icon: marker })
+    // The declining catch-all is skipped, the next one takes the row.
     expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe('span')
   })
 
@@ -153,9 +188,10 @@ describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)
     // The OPEN row is a separate reserved ext — still the builtin here.
     expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe(VscFolderOpened)
     service.registerFileIcon({ id: 'open', exts: ['folder-open'], icon: markerB })
-    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe('span')
+    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe('b')
     service.registerFileIcon({ id: 'closed-hi', exts: ['folder'], priority: 3, icon: markerB })
-    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe('span')
+    // The higher-priority registration ('b') takes the closed row.
+    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe('b')
   })
 
   it('a catch-all registration never claims a directory', () => {

@@ -28,7 +28,7 @@ import {
   IconEditOutline16, IconLinkOutline16, IconTrashOutline16, Menu, Modal, type MenuEntry, type MenuItem, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SiCursor, SiZedindustries } from 'react-icons/si'
-import { VscFolder, VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
+import { VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
 import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
 import { FenceErrorNotice } from './FenceErrorNotice.tsx'
 import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
@@ -580,8 +580,8 @@ export function FileTree(props: {
       style={{ paddingLeft: depth * 22 + 6 }}
     >
       {entry.isDir
-        ? (expandedSet.has(entry.path) ? <VscFolderOpened size={14} /> : <VscFolder size={14} />)
-        : <VscFile size={14} />}
+        ? dirRowIcon(entry.path, expandedSet.has(entry.path))
+        : fileRowIcon(entry.path)}
       <input
         ref={renameInputRef}
         className={css.explorerRenameInput}

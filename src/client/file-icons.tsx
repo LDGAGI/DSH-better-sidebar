@@ -32,10 +32,12 @@ export function builtinFolderIcon(open: boolean, size: number): ReactNode {
 type GlyphGroup = [readonly string[], GlyphFactory]
 
 /**
- * Extension → glyph groups, first match wins. Extensions are lowercase
- * without the leading dot, matched case-insensitively by the caller's
- * normalization. The reserved folder values (`'folder'`/`'folder-open'`)
- * never appear here — directories resolve through `builtinFolderIcon`.
+ * Extension → glyph groups. Extensions are lowercase without the leading dot,
+ * matched case-insensitively by the caller's normalization. Group order is
+ * documentation only: the flattened lookup below is a Map, so every extension
+ * key must stay unique (a duplicate would be last-write-wins). The reserved
+ * folder values (`'folder'`/`'folder-open'`) never appear here — directories
+ * resolve through `builtinFolderIcon`.
  */
 const GROUPS: readonly GlyphGroup[] = [
   [['md', 'markdown', 'mdx'], (size) => <VscMarkdown size={size} />],
