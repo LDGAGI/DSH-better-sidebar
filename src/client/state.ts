@@ -118,6 +118,14 @@ export interface SidebarState {
   bottomSplits: SplitNode
   /** Free windows (tabs dragged out onto the conversation area). */
   floats: FloatWindow[]
+  /**
+   * Live agent-terminal wait state (uuid → the wait the model currently
+   * blocks on in `terminal_wait_for`), mirrored from the host's
+   * agent-terminals push. Transient by design: sanitizeState never restores
+   * it, so a reload starts clean and the next push (sent immediately on WS
+   * attach) repopulates it.
+   */
+  agentWaits: Record<string, { needle: string; since: number }>
 }
 
 export const PANEL_MIN = 280
@@ -232,6 +240,7 @@ export function makeDefaultState(width = PANEL_DEFAULT, panelOpen = true, seed: 
     bottomOpenedOnce: false,
     bottomSplits: bottomLeaf,
     floats: [],
+    agentWaits: {},
   }
 }
 
@@ -1002,6 +1011,23 @@ export function agentTabId(uuid: string): string {
   return `${AGENT_TAB_PREFIX}${uuid}`
 }
 
+/** Shallow equality of two agent-wait maps (same keys, same needle+since). */
+function sameAgentWaits(
+  a: SidebarState['agentWaits'] | undefined,
+  b: Record<string, { needle: string; since: number }>,
+): boolean {
+  if (a === undefined) return Object.keys(b).length === 0
+  const aKeys = Object.keys(a)
+  if (aKeys.length !== Object.keys(b).length) return false
+  for (const key of aKeys) {
+    const av = a[key]
+    const bv = b[key]
+    if (av === undefined || bv === undefined) return false
+    if (av.needle !== bv.needle || av.since !== bv.since) return false
+  }
+  return true
+}
+
 /**
  * Reconcile the sidebar's agent-terminal tabs with the host's live list.
  * The host pushes the current list of agent terminals (created by the model
@@ -1016,7 +1042,7 @@ export function agentTabId(uuid: string): string {
  */
 export function reconcileAgentTerminals(
   state: SidebarState,
-  agentTerminals: ReadonlyArray<{ uuid: string; title: string }>,
+  agentTerminals: ReadonlyArray<{ uuid: string; title: string; waiting?: { needle: string; since: number } | null }>,
 ): SidebarState {
   const existingTabs = allLeaves(state.splits).concat(allLeaves(state.bottomSplits)).flatMap(leaf => leaf.tabs)
     .concat(state.floats.map(float => float.tab))
@@ -1031,7 +1057,17 @@ export function reconcileAgentTerminals(
   // convergence: no title suffix, no meta write — the tab keeps its uuid
   // so a later reconcile push revives it if the agent reopens the same one).
   const toRemove = existingAgentTabs.filter(tab => !serverUuids.has(agentUuidOf(tab.id)) && tab.pin === undefined)
-  if (toAdd.length === 0 && toRemove.length === 0) return state
+  // Mirror the live wait state from the push (authoritative: a vanished
+  // waiting field simply drops the entry). A waits-only change must still
+  // produce a new state — the tab add/remove no-change check alone would
+  // swallow banner updates.
+  const serverWaits: Record<string, { needle: string; since: number }> = {}
+  for (const terminal of agentTerminals) {
+    if (terminal.waiting !== undefined && terminal.waiting !== null) {
+      serverWaits[terminal.uuid] = { needle: terminal.waiting.needle, since: terminal.waiting.since }
+    }
+  }
+  if (toAdd.length === 0 && toRemove.length === 0 && sameAgentWaits(state.agentWaits, serverWaits)) return state
   // Remove tabs whose uuids vanished from the server list (the agent closed
   // them, or the pty exited and was reaped). Reuse closeTab's leaf cleanup;
   // a FLOATED agent terminal leaves with its window.
@@ -1057,7 +1093,7 @@ export function reconcileAgentTerminals(
     }
     next = openTabInActivePane(next, tab)
   }
-  return next
+  return { ...next, agentWaits: serverWaits }
 }
 
 // ── The per-session store ──────────────────────────────────────────────────
@@ -1299,6 +1335,9 @@ export function sanitizeState(parsed: unknown): SidebarState | undefined {
     bottomOpenedOnce: record.bottomOpenedOnce === true,
     bottomSplits,
     floats,
+    // The agent wait state is TRANSIENT (like revealed): never restored from
+    // storage — the host's first push after attach repopulates it.
+    agentWaits: {},
   }
 }
 

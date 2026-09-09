@@ -63,7 +63,7 @@ export function useHostFeeds(feeds: {
       socket.onmessage = (event) => {
         if (typeof event.data !== 'string') return
         try {
-          const list = JSON.parse(event.data) as Array<{ uuid: string; title: string; command: string; exited: boolean }>
+          const list = JSON.parse(event.data) as Array<{ uuid: string; title: string; command: string; exited: boolean; waiting?: { needle: string; since: number } | null }>
           if (!Array.isArray(list)) return
           store.reduce(s => ctx.get('betterSidebar')?.isTabEnabled('terminal') === false
             ? s
