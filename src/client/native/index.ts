@@ -64,6 +64,17 @@ function titleOf(descriptor: TabDescriptor): string {
 }
 
 /**
+ * The descriptor's guide line, evaluated fresh for the current locale. The
+ * host's new-tab list renders one line per entry; without a declared
+ * description every plugin page would read the same generic sentence.
+ */
+function descriptionOf(descriptor: TabDescriptor | undefined): string {
+  const description = descriptor?.description
+  if (description === undefined) return t('nativeGuideDesc')
+  return typeof description === 'function' ? description() : description
+}
+
+/**
  * The guide row's glyph for a descriptor icon (nothing when it has none).
  * The native guide renders `entry.icon`, so a takeover registered without one
  * is the only row in the list with a blank leading slot.
@@ -181,7 +192,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
             guide: [{
               order: descriptor.order ?? 100,
               title: () => titleOf(descriptor),
-              description: () => t('nativeGuideDesc'),
+              description: () => descriptionOf(descriptor),
               ...guideIconOf(icon),
             }],
           }),
@@ -208,7 +219,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
         guide: [{
           order: 10,
           title: () => t('files'),
-          description: () => t('nativeGuideDesc'),
+          description: () => descriptionOf(editor),
           // The takeover IS the editor descriptor's page, so it carries the
           // editor's glyph: without it the "Files" row is the only guide
           // entry with an empty icon slot.

@@ -27,6 +27,7 @@
 | 内置类型接管 | 插件的 `editor` 类型以 `extension` 优先级认领 `dsh-resource://file/**`（压过内置 `text` 预览），并接管内置 `files` 页面 kind（`openTab('files')` 打开插件的文件树）；插件卸载/禁用时内置实现自动复位 |
 | 终端上限 | 终端 tab 的数量上限只统计插件自己底部工作台里的终端；原生栏里的终端不计入 |
 | 底部工作台的开合 | 落到底部工作台的打开一律展开它（新建与聚焦都算），因此 `openTab` 的落点永远可见；开合按钮注册在 DSH 会话头的 utilities 槽（`conversation.session.header.utilities`），不在插件自己的宿主里 |
+| 新建标签页列表 | 每个 tab 类型在原生 guide 里占一行：标题取 `title`，说明取 `description`（未声明则回退通用句），图标取 `icon`；`hidden: true` 的类型不占行。插件的 `editor` 类型不再单独占行（它认领的文件资源由 `files` 接管页承载同一视图） |
 | 已移除 | 插件自绘右侧面板（含宽度拖拽 / 新会话默认宽度）与**自由窗口**（`features` 里的 `'floatWindows'` 已删除，v0.18.x 及更早版本的消费者请勿再 gate 该能力）；`openByDefault` / `defaultWidthPercent` / `changesDiffFloat` 三个设置项同步删除（旧文档里的键会被忽略） |
 
 ---
@@ -178,6 +179,12 @@ interface TabDescriptor {
   id: string
   /** 标题（i18n 友好：传字符串或返回字符串的函数） */
   title: string | (() => string)
+  /**
+   * 一行说明，渲染在标题下方（DSH 原生右侧栏的新建标签页 / guide 列表）。
+   * 不声明时回退到通用句「在 DSH 原生右侧栏打开」——所有插件页面就都长一样了，
+   * 所以请写清这一页到底做什么。函数形式在渲染时求值，跟随语言。
+   */
+  description?: string | (() => string)
   /** 图标：ReactNode 或 (size: number) => ReactNode */
   icon?: ReactNode | ((size: number) => ReactNode)
   /** + 菜单排序（升序）；默认 100。内置：editor=10, git=20, subagent=30, sidechat=35, terminal=40, browser=50 */

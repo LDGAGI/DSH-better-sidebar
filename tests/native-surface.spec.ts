@@ -162,8 +162,8 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     const store = createSidebarStore()
     store.setSession('s1')
     const service = createBetterSidebarService(store)
-    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null })
-    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null })
+    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null, description: () => 'Runs a shell' })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null, description: () => 'Browse the tree' })
     const records = createNativeTabRecords()
 
     const registered: Array<{ id: string; kind: string; title: (address: string) => string; guide: unknown }> = []
@@ -225,8 +225,15 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(filesType?.guide).toBeDefined()
     // The takeover carries the editor's glyph, so the "Files" guide row is
     // not the only one with a blank icon slot.
-    const filesGuide = filesType?.guide as Array<{ icon?: unknown }> | undefined
+    const filesGuide = filesType?.guide as Array<{ icon?: unknown; description?: () => string }> | undefined
     expect(filesGuide?.[0]?.icon).toBeDefined()
+    // The guide line is the descriptor's OWN description (the takeover reuses
+    // the editor's), and a descriptor that declares none falls back to the
+    // generic line — otherwise every plugin page would read identically.
+    expect(filesGuide?.[0]?.description?.()).toBe('Browse the tree')
+    const terminalGuide = registered.find(entry => entry.kind === 'terminal')?.guide as
+      Array<{ description?: () => string }> | undefined
+    expect(terminalGuide?.[0]?.description?.()).toBe('Runs a shell')
 
     dispose()
   })

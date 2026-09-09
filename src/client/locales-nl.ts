@@ -16,6 +16,12 @@
 export const nl: Record<string, string> = {
   files: 'Bestanden',
   nativeGuideDesc: 'Open in the DSH sidebar',
+  guideDescFiles: 'Blader door de bestandsboom van de workspace; klik opent voorbeeld of editor',
+  guideDescGit: 'Git-wijzigingen en bestandswijzigingen van deze sessie in één tabblad',
+  guideDescSubagent: 'Subagent-topologie en achtergrondtaken, live',
+  guideDescSidechat: 'Een onafhankelijke vervolgthread met de context van deze sessie',
+  guideDescTerminal: 'Een echte shell (xterm + pty) met herverbinding',
+  guideDescBrowser: 'Ingebouwde browser die chatlinks kan overnemen',
   changesSessionEmpty: 'Nog geen bestandsbewerkingen in deze sessie',
   changesRead: 'Lezen',
   changesMdReading: 'Lezen',

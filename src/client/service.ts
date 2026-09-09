@@ -162,6 +162,14 @@ export interface TabDescriptor {
   /** Unique id; also the `SidebarTab.type` value (`'explorer'`, `'my-plugin:db'`). */
   id: string
   title: string | (() => string)
+  /**
+   * One-line description of what this tab shows, rendered under the title in
+   * the host's new-tab list (DSH's native right Sidebar guide page). Without
+   * it the entry falls back to a generic "opens in the DSH sidebar" line, so
+   * every plugin page reads the same — declare the real purpose instead.
+   * Evaluated at render time, so a function follows the active locale.
+   */
+  description?: string | (() => string)
   icon?: ReactNode | ((size: number) => ReactNode)
   /** + menu sort order (ascending); default 100. */
   order?: number

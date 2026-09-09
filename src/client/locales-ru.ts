@@ -14,6 +14,12 @@
 export const ru: Record<string, string> = {
   files: 'Файлы',
   nativeGuideDesc: 'Open in the DSH sidebar',
+  guideDescFiles: 'Дерево файлов рабочей области: клик открывает просмотр или редактор',
+  guideDescGit: 'Изменения Git и правки файлов этой сессии в одной вкладке',
+  guideDescSubagent: 'Топология субагентов и фоновые задачи в реальном времени',
+  guideDescSidechat: 'Независимый дополнительный тред с контекстом этой сессии',
+  guideDescTerminal: 'Настоящий shell (xterm + pty) с переподключением',
+  guideDescBrowser: 'Встроенный браузер, перехватывает ссылки из чата',
   changesSessionEmpty: 'В этой сессии пока нет файловых операций',
   changesRead: 'Чтение',
   changesMdReading: 'Чтение',

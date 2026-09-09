@@ -44,6 +44,22 @@ describe('built-in tab registrations', () => {
     expect(changes?.component).toBeDefined()
   })
 
+  it('every visible tab declares a real guide line (no generic fallback)', () => {
+    // The native new-tab list renders `description()` under the title; a tab
+    // without one reads the same generic sentence as every other plugin page.
+    const { service } = setup()
+    const visible = service.getTabs().filter(descriptor => descriptor.hidden !== true)
+    expect(visible.length).toBeGreaterThan(0)
+    for (const descriptor of visible) {
+      expect(descriptor.description, `${descriptor.id} must declare a description`).toBeDefined()
+      const line = typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description
+      expect(line, `${descriptor.id} description must be non-empty`).toBeTruthy()
+    }
+    const lines = visible.map(descriptor =>
+      typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description)
+    expect(new Set(lines).size, 'descriptions must differ per tab').toBe(visible.length)
+  })
+
   it('the changes tab declares no settings of its own (the diff always docks)', () => {
     const { service } = setup()
     expect(service.getTab('git')?.settings).toBeUndefined()

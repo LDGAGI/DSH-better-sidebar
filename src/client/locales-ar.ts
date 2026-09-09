@@ -19,6 +19,12 @@
 export const ar: Record<string, string> = {
   files: 'الملفات',
   nativeGuideDesc: 'Open in the DSH sidebar',
+  guideDescFiles: 'استعرض شجرة ملفات مساحة العمل؛ انقر للمعاينة أو التحرير',
+  guideDescGit: 'تغييرات Git وتعديلات ملفات هذه الجلسة في تبويب واحد',
+  guideDescSubagent: 'بنية الوكلاء الفرعيين والمهام الخلفية مباشرةً',
+  guideDescSidechat: 'خيط متابعة مستقل يرث سياق هذه الجلسة',
+  guideDescTerminal: 'صدفة حقيقية (xterm + pty) مع إعادة الاتصال',
+  guideDescBrowser: 'متصفح مدمج يمكنه فتح روابط المحادثة',
   changesSessionEmpty: 'لا توجد عمليات ملفات في هذه الجلسة بعد',
   changesRead: 'قراءة',
   changesMdReading: 'قراءة',
