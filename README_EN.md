@@ -272,7 +272,7 @@ The GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sid
 
 **✨ New**
 
-- 🪟 **Every tab body now fills its pane**: the native sidebar's tab-body host is a block scroller with a definite height, not a flex container, and the plugin's tab roots declared only `flex: 1` — so they collapsed to content height and the side-chat composer sat right after the transcript instead of at the pane bottom (a long transcript pushed it out of view). The native adapter now wraps every tab body in a `height: 100%` column flex host, restoring the same fill semantics the bottom workbench has for all plugin tabs, third-party `registerTab` descriptors included.
+- 🪟 **Every tab body now fills its pane** (#609): the native sidebar's tab-body host is a block scroller with a definite height, not a flex container, and the plugin's tab roots declared only `flex: 1` — so they collapsed to content height and the side-chat composer sat right after the transcript instead of at the pane bottom (a long transcript pushed it out of view). The native adapter now wraps every tab body in a `height: 100%` column flex host, restoring the same fill semantics the bottom workbench has for all plugin tabs, third-party `registerTab` descriptors included.
 
 **🐛 Fixes**
 
@@ -281,7 +281,7 @@ The GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sid
 
 **🧰 CI & internals**
 
-- Baseline moved to DSH 0.1.5-alpha.2: peer floor, 22 devDependency pins, the CI mount lane, and `dsh.plugin.json` engines all follow; `pnpm peers check` is clean (hoisted the `dsh-session-persistence` transitive peer per §3-9).
+- Baseline moved to DSH 0.1.5-alpha.2 (#609): peer floor, 22 devDependency pins, the CI mount lane, and `dsh.plugin.json` engines all follow; `pnpm peers check` is clean (hoisted the `dsh-session-persistence` transitive peer per §3-9).
 - **`TabDescriptor.description` removed**: alpha.2's native guide entries no longer render a second line (they are icon + title capsules), so the field and the six `guideDesc*` keys (20 dictionaries) are gone; a new pane's default page is now selected from the registry (exactly one guide entry opens that page directly).
 
 ### v0.19.0-alpha.0
