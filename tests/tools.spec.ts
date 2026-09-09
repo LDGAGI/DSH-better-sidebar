@@ -203,9 +203,10 @@ describe('agent terminal tools', () => {
   it('terminal_wait_for returns skipped (schema-valid) when the registry reports a user skip', async () => {
     const { captured, registry } = mount()
     const tool = toolOf(captured, 'terminal_wait_for')
-    registry.create('s1', 'skipper', '')
+    // Use the uuid the registry actually minted — no coupling to its id scheme.
+    const uuid = registry.create('s1', 'skipper', '')
     registry.nextWaitResult = { kind: 'skipped' }
-    const value = await tool.execute({ uuid: 'uuid-1', needle: 'BUILD_OK', timeout_ms: 1000 }, exec('s1'))
+    const value = await tool.execute({ uuid, needle: 'BUILD_OK', timeout_ms: 1000 }, exec('s1'))
     expect(value).toEqual({ kind: 'skipped', needle: 'BUILD_OK' })
     expect(validateJsonSchemaValue(tool.output.schema, value, 'value')).toEqual([])
   })

@@ -140,5 +140,13 @@ needle 出现 / 超时 / 终端退出。等待期间用户在侧边栏看不到�
   贡献字符数（本地化句子包裹 needle，整体长度断言与语言相关，原计划内部矛盾）。
 - **新测试的 localStorage 兜底**：Node 26 + jsdom 29 组合下测试环境可能无全局
   `localStorage`（上游 `bottom-auto-terminal.spec.tsx` 在同环境即失败，属已知
-  win32/环境非回归类）；新 spec 的 afterEach 加 `typeof localStorage` 守卫，
+  win32/环境非回归类）；新 spec 的 afterEach 加守卫 + try/catch（jsdom opaque
+  origin 下 localStorage 可以是 throwing accessor，裸 typeof 也会炸），
   上游测试一律未动。
+- **已知限制：跨会话 pinned 虚拟 tab 收不到实时 banner/⏳**（Copilot review
+  指出）：等待状态 feed 按 viewer 会话订阅（`/sidebar/ws/agent-terminals` 按
+  当前 sessionId 连接），钉到其他会话的 pinned 虚拟 agent tab
+  （`pinned:<homeSessionId>:agent:<uuid>`）在其 home 会话非当前会话时收不到
+  实时等待状态。修复需跨会话 wait feed 多路复用（连 home 会话推送或聚合
+  推送），超出本特性范围，留待后续设计；跳过 API 按 uuid 全局寻址，跨会话
+  跳过本身可达。

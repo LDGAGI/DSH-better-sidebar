@@ -80,10 +80,15 @@ function mountSidebar(): { container: HTMLDivElement; store: ReturnType<typeof c
 afterEach(() => {
   document.body.innerHTML = ''
   // Belt and braces (same as bottom-auto-terminal): drop any persisted layout
-  // a pending 200ms debounce write left behind between tests. Guarded — some
-  // node/jsdom combos (node >=22 without --localstorage-file) expose no
-  // working localStorage and a bare access would throw in the hook.
-  if (typeof localStorage !== 'undefined') localStorage.clear()
+  // a pending 200ms debounce write left behind between tests. Fully guarded —
+  // some node/jsdom combos expose no working localStorage, and an opaque
+  // origin can define it as a THROWING accessor, so even `typeof` can throw;
+  // the try/catch keeps the cleanup hook itself failure-proof.
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.clear()
+  } catch {
+    // Opaque origin / no storage: nothing persisted to clear.
+  }
   vi.unstubAllGlobals()
 })
 
