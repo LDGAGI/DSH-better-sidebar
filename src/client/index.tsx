@@ -20,6 +20,7 @@ import { RenderBoundary } from './RenderBoundary.tsx'
 import { registerTurnTailInterception } from './intercept.tsx'
 import { createNativeTabRecords } from './native/tab-adapter.tsx'
 import { registerNativeSurface } from './native/index.ts'
+import { registerBottomToggle } from './sidebar/bottom-toggle.tsx'
 import { createNativeSurface } from './native/surface.ts'
 import { registerLinkInterception } from './link-intercept.ts'
 import { registerImeGuard } from './ime-guard.ts'
@@ -151,6 +152,12 @@ export function apply(ctx: Context): void {
     () => registerNativeSurface({ ctx, store: sidebarStore, service, records: nativeRecords }),
     'dsh-better-sidebar: native right-Sidebar registrations',
   )
+  // The bottom workbench's expand/collapse button in DSH's session header
+  // (the header's corner seat belongs to the native sidebar's own control).
+  ctx.effect(
+    () => registerBottomToggle(ctx, sidebarStore),
+    'dsh-better-sidebar: bottom-workbench toggle',
+  )
   ctx.effect(
     () => () => { nativeSurface.dispose(); service.setSurface(undefined) },
     'dsh-better-sidebar: native right-Sidebar surface',
@@ -166,8 +173,7 @@ export function apply(ctx: Context): void {
     terminalTitle = name
     const snapshot = service.getSnapshot()
     if (snapshot.state === undefined) return
-    const tabs = allLeaves(snapshot.state.splits)
-      .concat(allLeaves(snapshot.state.bottomSplits))
+    const tabs = allLeaves(snapshot.state.bottomSplits)
       .flatMap(leaf => leaf.tabs)
     for (const tab of tabs) {
       if (tab.type === 'terminal' && !isAgentTabId(tab.id) && tab.title === fallbackTitle) {
@@ -302,7 +308,7 @@ export function apply(ctx: Context): void {
           host.setAttribute('data-dsh-better-sidebar', '')
           document.body.appendChild(host)
           root = createRoot(host)
-          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore, nativeSurface: true })))
+          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore })))
           mounted = true
           guardAnchor()
           scheduleHostCheck()
