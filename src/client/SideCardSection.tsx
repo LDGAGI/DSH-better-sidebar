@@ -903,17 +903,6 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
         </div>
         <div className={css.row}>
           <span className={css.rowText}>
-            <span className={css.title}>{t('settingsOpenPathTitle')}</span>
-            <span className={css.desc}>{t('settingsOpenPathDesc')}</span>
-          </span>
-          <Switch
-            label={t('settingsOpenPathTitle')}
-            checked={prefs.interceptOpenPath}
-            onChange={(next) => { applyPref({ interceptOpenPath: next }) }}
-          />
-        </div>
-        <div className={css.row}>
-          <span className={css.rowText}>
             <span className={css.title}>{t('settingsOpenToolsTitle')}</span>
             <span className={css.desc}>{t('settingsOpenToolsDesc')}</span>
           </span>

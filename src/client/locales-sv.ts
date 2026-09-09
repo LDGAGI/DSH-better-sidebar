@@ -220,8 +220,6 @@ export const sv: Record<string, string> = {
   settingsWidthTitle: 'Standardbreddandel',
   settingsWidthDesc: 'Sidokortets standardandel av fönsterbredden för nya konversationer (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Öppna chattfiler i sidopanelen',
-  settingsOpenPathDesc: 'Öppna fillänkar i chatten (verktygsrader, producerade filer, omnämnanden) i sidopanelens editor i stället för systemets standardapp',
   settingsOpenToolsTitle: 'Injicera sidopanel-öppningsverktyg för modellen',
   settingsOpenToolsDesc: 'När aktiverat kan modellen öppna filer, mappar och HTTP(S)-sidor i sidopanelen via sidebar_open-verktyget (av som standard)',
   settingsTitleBarTitle: 'Positions kompatibilitetsläge',

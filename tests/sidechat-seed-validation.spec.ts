@@ -10,9 +10,9 @@
  * not a mock, so the class of bug cannot silently return.
  */
 import { describe, expect, it } from 'vitest'
-import { Session, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { Session, SessionLogOffset, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import { Inbox } from '@deepseek-ai/dsh-agent'
+import type { InboxState } from '@deepseek-ai/dsh-agent'
 import { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
 import type { SidebarSessionEvent } from '../src/context-types.ts'
 import { buildSidechatInheritance } from '../src/sidechat-core.ts'
@@ -42,19 +42,20 @@ function assistantMessage(text: string): Record<string, unknown> {
 }
 
 /** A parent log with a completed turn, a pending question, and an open
- *  in-progress turn (the exact shape a mid-stream thread creation sees). */
+ *  in-progress turn (the exact shape a mid-stream thread creation sees).
+ *  DSH 0.1.5 logs nothing for the in-flight step: its deltas are
+ *  process-local `agent/assistant-stream` frames, not session events. */
 function parentLog(): SidebarSessionEvent[] {
   return [
     ev('user/message', 0, userMessage('first question')),
     ev('turn/start', 1, { turn: 1 }),
     ev('step/start', 2, { turn: 1, step: 1 }),
-    ev('assistant/message', 3, { turn: 1, step: 1, message: assistantMessage('first answer') }),
+    ev('assistant/message', 3, { turn: 1, step: 1, message: assistantMessage('first answer'), stream: [] }),
     ev('step/end', 4, { turn: 1, step: 1 }),
     ev('turn/end', 5, { turn: 1, reason: { kind: 'completed' } }),
     ev('user/message', 6, userMessage('pending question')),
     ev('turn/start', 7, { turn: 2 }),
     ev('step/start', 8, { turn: 2, step: 1 }),
-    ev('assistant/chunk', 9, { turn: 2, step: 1, chunk: { type: 'text-delta', index: 0, text: 'in-progress' } }),
   ]
 }
 
@@ -68,7 +69,7 @@ describe('sidechat seed against the real dsh-session validator', () => {
     const types = child.snapshotEvents().map(event => event.type)
     expect(types).toEqual([
       'user/message', 'turn/start', 'step/start', 'assistant/message', 'step/end', 'turn/end',
-      'user/message', 'turn/start', 'step/start', 'assistant/chunk', 'step/end', 'turn/end',
+      'user/message', 'turn/start', 'step/start', 'step/end', 'turn/end',
       'session/end-seed',
     ])
     // The synthetic close is honest: the frozen turn ends interrupted.
@@ -113,18 +114,24 @@ describe('sidechat seed against the real dsh-session validator', () => {
   })
 })
 
-describe('sidechat seed fork markers vs the real dsh-agent Inbox replay', () => {
+describe('sidechat seed fork markers vs the reconstructed inbox', () => {
   /**
    * Regression: the thread-create call originally passed `seed` WITHOUT the
    * fork-marker pair (`meta.isSeeded: true` + `inheritedEventCount`). A seed
    * without them is REPLAY history, not an inherited prefix, so the child's
-   * ownEvents() includes the whole seed and its Inbox constructor replays the
+   * ownEvents() includes the whole seed and its inbox fold replays the
    * parent's `agent/inbox/spliced` events — inheriting whatever input sat
    * UNCLAIMED in the parent at the click moment (a queued follow-up, or a
    * tool-result context spliced into next-step between step boundaries of a
    * long-running turn). The first side prompt then claimed and SENT that stale
-   * message before the boundary + question. These tests run the REAL
-   * dsh-session Session and dsh-agent Inbox.
+   * message before the boundary + question.
+   *
+   * The fold below is the standard inbox projection's rule
+   * (`inboxProjectionDefinition` in `@deepseek-ai/dsh-agent-loop/inbox`,
+   * which 0.1.5 does not re-export from the package root): pending input is
+   * reconstructed from the session's OWN splice events, so the
+   * `inheritedEventCount` the marker pair supplies is exactly what keeps the
+   * inherited prefix out of it.
    */
   const pendingMessage = (id: string, kind: string, text: string) => ({
     id,
@@ -133,15 +140,24 @@ describe('sidechat seed fork markers vs the real dsh-agent Inbox replay', () => 
     source: { kind },
   })
   const inboxOver = (session: Session): { nextTurn: number; nextStep: number } => {
-    const inbox = new Inbox(session, { inserted() {}, discarded() {}, claimed() {} })
-    return { nextTurn: inbox.nextTurn.length, nextStep: inbox.nextStep.length }
+    let state: InboxState = { 'next-turn': [], 'next-step': [] }
+    for (const event of session.ownEvents()) {
+      if (event.type !== 'agent/inbox/spliced') continue
+      const splice = event.data
+      const list = state[splice.target]
+      state = {
+        ...state,
+        [splice.target]: list.toSpliced(splice.start, splice.removedCount ?? 0, ...splice.inserted),
+      }
+    }
+    return { nextTurn: state['next-turn'].length, nextStep: state['next-step'].length }
   }
   /** The shape the routes pass since the fix: isSeeded + inheritedEventCount. */
   const forkMarkedSession = (id: string, seed: readonly SidebarSessionEvent[]): Session =>
     Session.create(
       id as SessionId,
       seed as never,
-      { version: 0, id: id as SessionId, createdAt: Date.now(), isSeeded: true },
+      { version: SESSION_FORMAT_VERSION, id: id as SessionId, createdAt: Date.now(), isSeeded: true },
       SessionLogOffset(seed.length),
     )
   /** Real loop order: inbox insert → turn/start → claim deletion → step/start
@@ -152,7 +168,7 @@ describe('sidechat seed fork markers vs the real dsh-agent Inbox replay', () => 
     ev('agent/inbox/spliced', 2, { target: 'next-turn', start: 0, removedCount: 1, inserted: [] }),
     ev('step/start', 3, { turn: 1, step: 1 }),
     ev('user/message', 4, pendingMessage('m-q', 'user', 'q')),
-    ev('assistant/message', 5, { turn: 1, step: 1, message: assistantMessage('a') }),
+    ev('assistant/message', 5, { turn: 1, step: 1, message: assistantMessage('a'), stream: [] }),
     ev('step/end', 6, { turn: 1, step: 1 }),
     ev('turn/end', 7, { turn: 1, reason: { kind: 'completed' } }),
   ]

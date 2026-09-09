@@ -237,8 +237,6 @@ export const th: Record<string, string> = {
   settingsWidthTitle: 'สัดส่วนความกว้างเริ่มต้น',
   settingsWidthDesc: 'สัดส่วนความกว้างเริ่มต้นของการ์ดด้านข้างจากความกว้างหน้าต่างสำหรับแชทใหม่ (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'เปิดไฟล์แชทในแถบด้านข้าง',
-  settingsOpenPathDesc: 'เปิดลิงก์ไฟล์ในแชท (แถวเครื่องมือ, ไฟล์ที่สร้าง, การกล่าวถึง) ในตัวแก้ไขแถบด้านข้างแทนแอปเริ่มต้นของระบบ',
   settingsOpenToolsTitle: 'ฉีดเครื่องมือเปิดแถบด้านข้างสำหรับโมเดล',
   settingsOpenToolsDesc: 'เมื่อเปิดใช้ โมเดลสามารถเปิดไฟล์ โฟลเดอร์ และหน้า HTTP(S) ในแถบด้านข้างผ่านเครื่องมือ sidebar_open (ปิดเป็นค่าเริ่มต้น)',
   settingsTitleBarTitle: 'โหมดความเข้ากันได้ของตำแหน่ง',

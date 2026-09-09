@@ -235,8 +235,6 @@ export const id: Record<string, string> = {
   settingsWidthTitle: 'Porsi lebar default',
   settingsWidthDesc: 'Porsi lebar jendela default kartu samping untuk obrolan baru (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Buka berkas obrolan di sidebar',
-  settingsOpenPathDesc: 'Buka tautan berkas di obrolan (baris alat, berkas yang dihasilkan, mention) di editor sidebar alih-alih aplikasi default sistem',
   settingsOpenToolsTitle: 'Suntik alat buka sidebar untuk model',
   settingsOpenToolsDesc: 'Saat diaktifkan, model dapat membuka file, folder, dan halaman HTTP(S) di sidebar melalui alat sidebar_open (nonaktif secara default)',
   settingsTitleBarTitle: 'Mode kompatibilitas posisi',

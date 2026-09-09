@@ -220,8 +220,6 @@ export const pt: Record<string, string> = {
   settingsWidthTitle: 'Participação padrão na largura',
   settingsWidthDesc: 'Participação padrão do cartão lateral na largura da janela em novas conversas (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Abrir arquivos do chat na barra lateral',
-  settingsOpenPathDesc: 'Abrir links de arquivos no chat (linhas de ferramentas, arquivos produzidos, menções) no editor da barra lateral em vez do aplicativo padrão do sistema',
   settingsOpenToolsTitle: 'Injetar a ferramenta de abertura na barra lateral para o modelo',
   settingsOpenToolsDesc: 'Quando ativado, o modelo pode abrir arquivos, pastas e páginas HTTP(S) na barra lateral pela ferramenta sidebar_open (desativado por padrão)',
   settingsTitleBarTitle: 'Modo de compatibilidade de posição',

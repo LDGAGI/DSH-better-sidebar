@@ -237,8 +237,6 @@ export const hi: Record<string, string> = {
   settingsWidthTitle: 'डिफ़ॉल्ट चौड़ाई हिस्सा',
   settingsWidthDesc: 'नए वार्तालाप के लिए साइड कार्ड की विंडो चौड़ाई का डिफ़ॉल्ट हिस्सा (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'चैट फ़ाइलें साइडबार में खोलें',
-  settingsOpenPathDesc: 'चैट में फ़ाइल लिंक (टूल पंक्ति, उत्पादित फ़ाइलें, उल्लेख) क्लिक करने पर सिस्टम डिफ़ॉल्ट ऐप के बजाय साइडबार एडिटर में खोलें',
   settingsOpenToolsTitle: 'मॉडल के लिए साइडबार ओपन टूल इंजेक्ट करें',
   settingsOpenToolsDesc: 'चालू होने पर, मॉडल sidebar_open टूल से साइडबार में फ़ाइलें, फ़ोल्डर और HTTP(S) पेज खोल सकता है (डिफ़ॉल्ट रूप से बंद)',
   settingsTitleBarTitle: 'स्थिति संगतता मोड',

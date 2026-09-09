@@ -235,8 +235,6 @@ export const nl: Record<string, string> = {
   settingsWidthTitle: 'Standaard breedte-aandeel',
   settingsWidthDesc: 'Het standaard breedte-aandeel van de zijkaart voor nieuwe conversaties (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Chatbestanden in de zijbalk openen',
-  settingsOpenPathDesc: 'Bestandslinks in de chat (toolrijen, geproduceerde bestanden, vermeldingen) openen in de zijbalk-editor in plaats van de standaard systeemapp',
   settingsOpenToolsTitle: 'Zijbalk-openen-tool voor het model injecteren',
   settingsOpenToolsDesc: 'Indien ingeschakeld kan het model bestanden, mappen en HTTP(S)-pagina\'s in de zijbalk openen via de sidebar_open-tool (standaard uit)',
   settingsTitleBarTitle: 'Positiecompatibiliteitsmodus',

@@ -40,6 +40,8 @@ interface FakeContext {
   sessions: { get: (id: string) => { header: { cwd?: string } } | undefined }
   tools: { register: (tool: unknown) => () => void }
   effect: (fn: () => void | (() => void), label?: string) => void
+  /** The session/agent event feeds: nothing emits in these tests. */
+  on: (event: string, listener: (payload: never) => void) => () => void
   /** The settings service never appears in the smoke context: the inject
    *  callback must never run (mirror of cordis' service-less inject). */
   inject: (deps: readonly string[], callback: (sctx: never) => void) => () => void
@@ -100,6 +102,7 @@ describe('host plugin smoke', () => {
       // No settings service in the smoke context: the registration callback
       // never runs (cordis' service-less inject behaves the same).
       inject: () => () => {},
+      on: () => () => {},
       // No jobs/agents services: the jobs routes degrade to a 503.
       get: () => undefined,
     }
@@ -136,6 +139,7 @@ describe('host plugin smoke', () => {
         if (typeof cleanup === 'function') effects.push(cleanup)
       },
       inject: () => () => {},
+      on: () => () => {},
       get: () => undefined,
     }
     try {
@@ -492,7 +496,7 @@ describe('git destructive operations (scratch repository)', () => {
 describe('session cwd resolution over the API route', () => {
   interface CtxOverrides {
     sessions?: { get: (id: string) => { header: { cwd?: string } } | undefined }
-    sessionPersistence?: { inspect: (id: string) => Promise<{ meta: { cwd?: string } }> }
+    sessionPersistence?: { open: (id: string, access: 'read' | 'write') => Promise<{ header: { cwd?: string }; read: () => Promise<{ events: never[] }>; close: () => Promise<void> }> }
   }
 
   const mountAll = (overrides: CtxOverrides = {}): SidebarWebRoute[] => {
@@ -509,6 +513,8 @@ describe('session cwd resolution over the API route', () => {
       effect: (fn: () => void | (() => void)) => { fn() },
       // No settings service: the namespace registration never runs.
       inject: () => () => {},
+      // The session/agent event feeds: nothing emits in these tests.
+      on: () => () => {},
       // No jobs/agents services in the smoke context: the routes degrade.
       get: (key: string) => key === 'sessionPersistence' ? overrides.sessionPersistence : undefined,
     }
@@ -575,8 +581,10 @@ describe('session cwd resolution over the API route', () => {
     const coldCwd = resolvePath('/cold-project-cwd')
     const route = mount({
       sessionPersistence: {
-        inspect: async (id) => ({
-          meta: id === 's-cold' ? { cwd: coldCwd } : {},
+        open: async (id) => ({
+          header: id === 's-cold' ? { cwd: coldCwd } : {},
+          read: async () => ({ events: [] }),
+          close: async () => {},
         }),
       },
     })
@@ -592,7 +600,7 @@ describe('session cwd resolution over the API route', () => {
     // potentially recreate the original "outside workspace" misclassification.
     const route = mount({
       sessionPersistence: {
-        inspect: async () => ({ meta: { cwd: 'relative/path' } }),
+        open: async () => ({ header: { cwd: 'relative/path' }, read: async () => ({ events: [] }), close: async () => {} }),
       },
     })
     const result = await invoke(route, 'session.cwd', { sessionId: 's-bad' })
@@ -603,7 +611,7 @@ describe('session cwd resolution over the API route', () => {
   it('falls back to the process cwd when persistence has no cwd for the session', async () => {
     const route = mount({
       sessionPersistence: {
-        inspect: async () => ({ meta: {} }),
+        open: async () => ({ header: {}, read: async () => ({ events: [] }), close: async () => {} }),
       },
     })
     const result = await invoke(route, 'session.cwd', { sessionId: 's-blank' })
@@ -877,6 +885,8 @@ describe('side card settings routes', () => {
         if (deps.includes('settings') && settings !== undefined) callback({ settings })
         return () => {}
       },
+      // The session/agent event feeds: nothing emits in these tests.
+      on: () => () => {},
       // No jobs/agents services: the jobs routes degrade to a 503.
       get: () => undefined,
     }
@@ -990,7 +1000,6 @@ describe('side card settings routes', () => {
         bottomPanelAutoTerminal: true,
         terminalFontFamily: '',
         terminalFontSize: 13,
-        interceptOpenPath: true,
         editorExplorer: false,
         workspaceFence: true,
         terminalShell: '',
@@ -1170,6 +1179,8 @@ describe('agent terminal tool gating', () => {
         if (deps.includes('settings')) callback({ settings })
         return () => {}
       },
+      // The session/agent event feeds: nothing emits in these tests.
+      on: () => () => {},
       // No jobs/agents services: the jobs routes degrade to a 503.
       get: () => undefined,
     }
@@ -1227,6 +1238,8 @@ describe('agent sidebar-open tool gating', () => {
         if (deps.includes('settings')) callback({ settings })
         return () => {}
       },
+      // The session/agent event feeds: nothing emits in these tests.
+      on: () => () => {},
       get: () => undefined,
     }
     apply(ctx as never)

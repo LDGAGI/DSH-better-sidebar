@@ -237,8 +237,6 @@ export const vi: Record<string, string> = {
   settingsWidthTitle: 'Tỷ lệ chiều rộng mặc định',
   settingsWidthDesc: 'Tỷ lệ phần trăm chiều rộng cửa sổ mà thẻ bên chiếm cho phiên mới (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Mở tệp chat trong thanh bên',
-  settingsOpenPathDesc: 'Khi nhấp link tệp trong chat (dòng công cụ, danh sách sản phẩm, nhắc tệp), mở trong trình soạn thảo thanh bên thay vì ứng dụng mặc định hệ thống',
   settingsOpenToolsTitle: 'Tiêm công cụ mở thanh bên cho mô hình',
   settingsOpenToolsDesc: 'Khi bật, mô hình có thể mở tệp, thư mục và trang HTTP(S) trong thanh bên qua công cụ sidebar_open (mặc định tắt)',
   settingsTitleBarTitle: 'Chế độ tương thích thanh tiêu đề',

@@ -237,8 +237,6 @@ export const ja: Record<string, string> = {
   settingsWidthTitle: 'デフォルト幅の比率',
   settingsWidthDesc: '新規会話時のサイドカードがウィンドウ幅に占める割合 (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'チャット内ファイルをサイドバーで開く',
-  settingsOpenPathDesc: 'チャット内のファイルリンク（ツール行、産物リスト、ファイル言及）クリック時に、システム既定アプリではなくサイドバーエディターで開く',
   settingsOpenToolsTitle: 'モデルにサイドバー開くツールを注入',
   settingsOpenToolsDesc: 'オンにすると、モデルは sidebar_open ツールでサイドバーにファイル・フォルダー・HTTP(S) ページを開ける（デフォルトオフ）',
   settingsTitleBarTitle: '位置互換モード',

@@ -237,8 +237,6 @@ export const tr: Record<string, string> = {
   settingsWidthTitle: 'Varsayılan genişlik payı',
   settingsWidthDesc: 'Yeni sohbetler için yan kartın pencere genişliğindeki varsayılan payı (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Sohbet dosyalarını kenar çubuğunda aç',
-  settingsOpenPathDesc: 'Sohbetteki dosya bağlantılarını (araç satırları, üretilen dosyalar, anılmalar) sistem varsayılan uygulaması yerine kenar çubuğu düzenleyicisinde aç',
   settingsOpenToolsTitle: 'Model için kenar çubuğu açma aracı enjekte et',
   settingsOpenToolsDesc: 'Etkinleştirildiğinde model, sidebar_open aracıyla kenar çubuğunda dosyaları, klasörleri ve HTTP(S) sayfalarını açabilir (varsayılan kapalı)',
   settingsTitleBarTitle: 'Konum uyumluluk modu',

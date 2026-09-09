@@ -223,8 +223,6 @@ export const de: Record<string, string> = {
   settingsWidthTitle: 'Standardbreite',
   settingsWidthDesc: 'Standardanteil der Seitenkarte an der Fensterbreite für neue Unterhaltungen (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Chat-Dateien in der Seitenleiste öffnen',
-  settingsOpenPathDesc: 'Dateilinks im Chat (Werkzeugzeilen, erstellte Dateien, Erwähnungen) werden im Seitenleisten-Editor geöffnet statt in der System-Standardanwendung',
   settingsOpenToolsTitle: 'Seitenleisten-Öffnungswerkzeug für das Modell bereitstellen',
   settingsOpenToolsDesc: 'Wenn aktiviert, kann das Modell über das sidebar_open-Werkzeug Dateien, Ordner und HTTP(S)-Seiten in der Seitenleiste öffnen (standardmäßig deaktiviert)',
   settingsTitleBarTitle: 'Kompatibilitätsmodus der Position',

@@ -238,8 +238,6 @@ export const ar: Record<string, string> = {
   settingsWidthTitle: 'الحصة الافتراضية للعرض',
   settingsWidthDesc: 'الحصة الافتراضية للبطاقة الجانبية من عرض النافذة للمحادثات الجديدة (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'فتح ملفات المحادثة في الشريط الجانبي',
-  settingsOpenPathDesc: 'فتح روابط الملفات في المحادثة (صفوف الأدوات، الملفات الناتجة، الإشارات) في محرّر الشريط الجانبي بدلاً من التطبيق الافتراضي للنظام',
   settingsOpenToolsTitle: 'حقن أداة فتح الشريط الجانبي للنموذج',
   settingsOpenToolsDesc: 'عند التفعيل، يمكن للنموذج فتح الملفات والمجلدات وصفحات HTTP(S) في الشريط الجانبي عبر أداة sidebar_open (معطّل افتراضياً)',
   settingsTitleBarTitle: 'وضع توافق الموضع',

@@ -228,8 +228,6 @@ export const it: Record<string, string> = {
   settingsWidthTitle: 'Quota di larghezza predefinita',
   settingsWidthDesc: 'La quota predefinita della scheda laterale sulla larghezza della finestra per le nuove conversazioni (20–60)',
   settingsWidthSuffix: '%',
-  settingsOpenPathTitle: 'Apri i file della chat nella barra laterale',
-  settingsOpenPathDesc: 'Apre i collegamenti ai file nella chat (righe di strumenti, file prodotti, menzioni) nell’editor della barra laterale invece dell’app predefinita di sistema',
   settingsOpenToolsTitle: 'Iniettare lo strumento di apertura della barra laterale per il modello',
   settingsOpenToolsDesc: 'Se attivato, il modello può aprire file, cartelle e pagine HTTP(S) nella barra laterale tramite lo strumento sidebar_open (disattivato per impostazione predefinita)',
   settingsTitleBarTitle: 'Modalità di compatibilità della posizione',
