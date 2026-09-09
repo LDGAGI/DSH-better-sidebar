@@ -85,7 +85,7 @@ describe('service routing into the native surface', () => {
     store.setSession('s1')
     const service = createBetterSidebarService(store)
     service.setSurface(surface)
-    service.registerTab({ id: 'terminal', title: 'Terminal', createTab: state => ({ tab: { id: `terminal:${state.nextTerminal}`, type: 'terminal', title: 'Terminal', meta: { n: state.nextTerminal } } }) })
+    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null, createTab: state => ({ tab: { id: `terminal:${state.nextTerminal}`, type: 'terminal', title: 'Terminal', meta: { n: state.nextTerminal } } }) })
     service.registerTab({ id: 'git', title: 'Changes', component: () => null })
     service.registerTab({ id: 'editor', title: 'Files', component: () => null })
     return { surface, calls, service }
