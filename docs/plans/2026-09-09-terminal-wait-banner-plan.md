@@ -769,7 +769,7 @@ import { setupReactAct } from './test-utils.ts'
 setupReactAct()
 
 import { Sidebar } from '../src/client/Sidebar.tsx'
-import { createSidebarStore, type SidebarStore } from '../src/client/state.ts'
+import { createSidebarStore, openTabInActivePane } from '../src/client/state.ts'
 import { createBetterSidebarService, type BetterSidebarService } from '../src/client/service.ts'
 
 /** jsdom has no WebSocket; the agent-terminals push effect constructs one on mount. */
@@ -803,6 +803,13 @@ function mountSidebar(): { container: HTMLDivElement; store: ReturnType<typeof c
   })
   const sessionId = `s1-${++sessionSeq}`
   store.setSession(sessionId)
+  // Stub the terminal descriptor: the real one lazy-loads the xterm chunk,
+  // which jsdom cannot fetch (the bottom-auto-terminal harness does the same).
+  service.registerTab({
+    id: 'terminal',
+    title: () => 'Terminal',
+    component: () => null,
+  })
   const localeSnapshot = { active: 'en' }
   const sessionsSnapshot = {
     current: sessionId,
@@ -858,12 +865,18 @@ describe('agent terminal wait badge (push → state → tab pill)', () => {
     expect(container.textContent).not.toContain('⏳')
   })
 
-  it('never shows ⏳ on UI-owned terminal tabs', () => {
-    const { container } = mountSidebar()
-    // A UI terminal tab (id NOT agent:) with a same-named wait never badges —
-    // the lookup keys on the agent uuid only.
-    act(() => { feedsSocket().onmessage?.({ data: JSON.stringify([{ uuid: 'u2', title: 'ui', command: '', exited: false, waiting: { needle: 'N', since: 1 } }]) }) })
-    act(() => { feedsSocket().onmessage?.({ data: JSON.stringify([]) }) })
+  it('shows ⏳ only on agent tabs, never on UI-owned terminal tabs', () => {
+    const { container, store } = mountSidebar()
+    // A UI-owned terminal tab (id NOT agent:) lives in the strip too; the
+    // badge lookup keys on the agent uuid, so it never badges.
+    act(() => { store.reduce(s => openTabInActivePane(s, { id: 'terminal:manual-1', type: 'terminal', title: 'UI terminal' })) })
+    const terminal = { uuid: 'u1', title: 'dev server', command: '', exited: false }
+    act(() => { feedsSocket().onmessage?.({ data: JSON.stringify([{ ...terminal, waiting: { needle: 'READY_1', since: 1 } }]) }) })
+    // Exactly ONE hourglass: the agent tab. (Counted from textContent — CSS
+    // module class names are not stable under the test transform.)
+    expect((container.textContent.match(/⏳/g) ?? []).length).toBe(1)
+    // The wait resolved → the pill disappears entirely.
+    act(() => { feedsSocket().onmessage?.({ data: JSON.stringify([terminal]) }) })
     expect(container.textContent).not.toContain('⏳')
   })
 })
