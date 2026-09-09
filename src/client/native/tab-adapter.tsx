@@ -281,33 +281,49 @@ export function NativeTabBody(props: NativeBodyInjected & NativeBodyFrameworkPro
   })
   useEffect(() => () => { records.drop(nativeTab.id) }, [records, nativeTab.id])
   if (descriptor === undefined) {
-    return createElement(OrphanedTab, { ctx, store, scope, tab: view.tab, visible: nativeTab.visible })
+    // The orphaned fallback sits in the SAME native host as a live body, so
+    // it gets the same full-height box (its own root also relies on the
+    // `flex: 1` contract the column host restores). The host div carries
+    // `data-dsh-native-tab-host` (empty value) so the e2e lane can assert
+    // the fill, mirroring `data-dsh-better-sidebar`.
+    return createElement(
+      'div',
+      { className: css.nativeTabHost, 'data-dsh-native-tab-host': '' },
+      createElement(OrphanedTab, { ctx, store, scope, tab: view.tab, visible: nativeTab.visible }),
+    )
   }
   return createElement(
     RenderBoundary,
     { className: css.tabBoundaryError },
-    createElement(descriptor.component, {
-      ctx,
-      store,
-      scope,
-      tab: view.tab,
-      visible: nativeTab.visible,
-      expanded: view.expanded,
-      revealed: view.revealed,
-      onToggleDir: (path: string) => { records.toggleExpanded(nativeTab.id, path) },
-      onReferenceFile: (path: string, isDir: boolean) => { referenceInChat(ctx, sessionId, cwd, path, isDir) },
-      onOpenDiff: (tab: SidebarTab) => {
-        service.openTab({
-          type: 'diff',
-          title: tab.title,
-          id: tab.id,
-          ...(tab.diff === undefined ? {} : { diff: tab.diff }),
-        }, scope)
-      },
-      onSubagentJump: (childSessionId: string) => {
-        service.openTab({ type: 'subagent', meta: { childSessionId } }, scope)
-      },
-    }),
+    // The full-height host wrapper (see the `.nativeTabHost` rule in
+    // sidebar.module.css for the native `.paneBody` contract); its
+    // `data-dsh-native-tab-host` attribute lets the e2e lane assert the fill.
+    createElement(
+      'div',
+      { className: css.nativeTabHost, 'data-dsh-native-tab-host': '' },
+      createElement(descriptor.component, {
+        ctx,
+        store,
+        scope,
+        tab: view.tab,
+        visible: nativeTab.visible,
+        expanded: view.expanded,
+        revealed: view.revealed,
+        onToggleDir: (path: string) => { records.toggleExpanded(nativeTab.id, path) },
+        onReferenceFile: (path: string, isDir: boolean) => { referenceInChat(ctx, sessionId, cwd, path, isDir) },
+        onOpenDiff: (tab: SidebarTab) => {
+          service.openTab({
+            type: 'diff',
+            title: tab.title,
+            id: tab.id,
+            ...(tab.diff === undefined ? {} : { diff: tab.diff }),
+          }, scope)
+        },
+        onSubagentJump: (childSessionId: string) => {
+          service.openTab({ type: 'subagent', meta: { childSessionId } }, scope)
+        },
+      }),
+    ),
   )
 }
 

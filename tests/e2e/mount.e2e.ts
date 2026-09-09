@@ -314,6 +314,39 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
     )
     .toBe(true)
 
+  // The native tab body host is a BLOCK scroller with a definite height, not a
+  // flex container, so a tab root that only declares `flex: 1` collapses to its
+  // content height — exactly how the side-chat composer used to drift away from
+  // the pane bottom. The native adapter wraps every body in a full-height column
+  // host; assert the box really fills its pane and the composer sits on the
+  // pane's floor. This is the regression guard for that fill contract.
+  await expect
+    .poll(
+      () => page.evaluate(() => {
+        const hosts = [...document.querySelectorAll('[data-dsh-native-tab-host]')]
+        const host = hosts.find(element => element.getBoundingClientRect().height > 0)
+        if (host === undefined) return 'no visible native tab host'
+        // The wrapper's parent is the SLOT HOST, which renders with
+        // `display: contents` and therefore has no box of its own; the pane
+        // body is the first ancestor that actually draws one.
+        const view = host.ownerDocument.defaultView
+        let paneBody = host.parentElement
+        while (paneBody !== null && (view?.getComputedStyle(paneBody).display ?? '') === 'contents') {
+          paneBody = paneBody.parentElement
+        }
+        if (paneBody === null) return 'the native tab host has no boxed ancestor'
+        const fillGap = Math.round(paneBody.getBoundingClientRect().height - host.getBoundingClientRect().height)
+        if (Math.abs(fillGap) > 2) return `tab body does not fill its pane: gap ${fillGap}px`
+        const composer = document.querySelector('[class*="sidechatComposer"]')
+        if (composer === null) return 'the side-chat composer is not rendered'
+        // The composer's own 8px bottom margin is the only allowed gap.
+        const bottomGap = Math.round(paneBody.getBoundingClientRect().bottom - composer.getBoundingClientRect().bottom)
+        return bottomGap <= 12 ? 'filled' : `the composer sits ${bottomGap}px above the pane bottom`
+      }),
+      { timeout: 30_000 },
+    )
+    .toBe('filled')
+
   // Side Chat host-route smoke against the REAL host: create a thread child
   // under the seeded session (custom-seed creation through AgentRegistry),
   // deliver a follow-up, cancel, and release it. The turn itself cannot run

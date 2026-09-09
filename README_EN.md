@@ -266,6 +266,24 @@ The GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sid
 
 **Supported DSH versions**: <a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.18.1): 0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a> · full release history on the [Releases](https://github.com/omdsh-dev/DSH-better-sidebar/releases) page
 
+### v0.19.0-alpha.1
+
+> 🧪 **alpha channel** (npm dist-tag `alpha`, install `dsh-better-sidebar@alpha`): supports **DSH 0.1.5-alpha.2+** only (peer floor `^0.1.5-alpha.2`, CI pins `@deepseek-ai/dsh@0.1.5-alpha.2`). Stay on **v0.19.0-alpha.0** for 0.1.5-alpha.1; the 0.1.2-rc.1 stable line keeps using **v0.18.1** (npm `latest`).
+
+**✨ New**
+
+- 🪟 **Every tab body now fills its pane**: the native sidebar's tab-body host is a block scroller with a definite height, not a flex container, and the plugin's tab roots declared only `flex: 1` — so they collapsed to content height and the side-chat composer sat right after the transcript instead of at the pane bottom (a long transcript pushed it out of view). The native adapter now wraps every tab body in a `height: 100%` column flex host, restoring the same fill semantics the bottom workbench has for all plugin tabs, third-party `registerTab` descriptors included.
+
+**🐛 Fixes**
+
+- 🧭 **File address grammar follows DSH 0.1.5-alpha.2**: `fileAddressFor` always produces a session-scoped address and absolute paths keep their leading `/`; `parseFileAddress` is prefix-based and ignores `?`/`#` suffixes.
+- 🪟 **Center-column anchor follows alpha.2's global panels**: the `conversation` slot became `main.conversation` under the root-scoped keyed `main` slot, so the locator now resolves the new key and skips `display: contents` slot hosts (alpha.1's old key still works).
+
+**🧰 CI & internals**
+
+- Baseline moved to DSH 0.1.5-alpha.2: peer floor, 22 devDependency pins, the CI mount lane, and `dsh.plugin.json` engines all follow; `pnpm peers check` is clean (hoisted the `dsh-session-persistence` transitive peer per §3-9).
+- **`TabDescriptor.description` removed**: alpha.2's native guide entries no longer render a second line (they are icon + title capsules), so the field and the six `guideDesc*` keys (20 dictionaries) are gone; a new pane's default page is now selected from the registry (exactly one guide entry opens that page directly).
+
 ### v0.19.0-alpha.0
 
 > 🧪 **alpha channel** (npm dist-tag `alpha`, install `dsh-better-sidebar@alpha`): supports **DSH 0.1.5-alpha.1+** only (peer floor `^0.1.5-alpha.1`, CI pins `@deepseek-ai/dsh@0.1.5-alpha.1`). The 0.1.2-rc.1 stable line keeps using **v0.18.1** (npm `latest`).

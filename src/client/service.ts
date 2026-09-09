@@ -162,14 +162,6 @@ export interface TabDescriptor {
   /** Unique id; also the `SidebarTab.type` value (`'explorer'`, `'my-plugin:db'`). */
   id: string
   title: string | (() => string)
-  /**
-   * One-line description of what this tab shows, rendered under the title in
-   * the host's new-tab list (DSH's native right Sidebar guide page). Without
-   * it the entry falls back to a generic "opens in the DSH sidebar" line, so
-   * every plugin page reads the same — declare the real purpose instead.
-   * Evaluated at render time, so a function follows the active locale.
-   */
-  description?: string | (() => string)
   icon?: ReactNode | ((size: number) => ReactNode)
   /** + menu sort order (ascending); default 100. */
   order?: number
@@ -526,7 +518,7 @@ export function matchUrlTarget(tabs: readonly TabDescriptor[], url: URL): TabDes
  * The plugin version this service instance reports. Keep in lockstep with
  * `package.json`'s version — `tests/service.spec.ts` asserts the pair.
  */
-export const SIDEBAR_SERVICE_VERSION = '0.19.0-alpha.0'
+export const SIDEBAR_SERVICE_VERSION = '0.19.0-alpha.1'
 
 /**
  * Monotonic capability list consumers use to gate new API usage (features

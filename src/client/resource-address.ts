@@ -5,11 +5,16 @@
  * tab's content identity: the same address is the same tab. Two scopes exist:
  *
  * - `dsh-resource://file/session/<sessionId>/<path>` names a file by its path
- *   relative to that session's workspace root (`src/a.ts`, no leading `/`);
+ *   relative to that session's workspace root OR by its absolute path kept
+ *   absolute inside the session scope (`src/a.ts` vs `/outside/a.ts` — the
+ *   leading `/` survives; the host resolves it against the root it holds for
+ *   the session);
  * - `dsh-resource://file/absolute/<path>` names a file by its absolute path
  *   with the leading `/` dropped (`absolute/home/me/x.txt`; Windows
  *   `absolute/C:/x/y.txt`; a UNC path keeps an empty first segment,
- *   `absolute//server/share/x.txt`). It carries no session.
+ *   `absolute//server/share/x.txt`). It carries no session. `fileAddressFor`
+ *   no longer produces this scope on DSH 0.1.5-alpha.2, but it must keep
+ *   parsing: legacy and third-party addresses still spell it.
  *
  * Every id and path segment is component-encoded, so a name carrying `#`, `?`
  * or a space survives the round trip; `:` stays literal so a drive letter
@@ -18,8 +23,10 @@
  * The plugin parses these addresses itself instead of importing
  * `@deepseek-ai/dsh-util-workspace-path`: the client bundle's purity gate
  * forbids value-importing an unlisted `@deepseek-ai/*` package. This module
- * mirrors that package's implementation (`packages/util/workspace-path` in
- * DSH 0.1.5) and is pinned by tests/resource-address.spec.ts.
+ * mirrors that package's implementation — `packages/util/workspace-path/src/file-address.ts`
+ * and `fileAddressFor` in `packages/util/workspace-path/src/index.ts` in
+ * DSH 0.1.5-alpha.2 (github.com/deepseek-ai/deepseek-harness, tag
+ * `dsh-v0.1.5-alpha.2`) — and is pinned by tests/resource-address.spec.ts.
  */
 
 /** The scheme and type every file address opens with. */
@@ -31,9 +38,9 @@ export const FILE_ADDRESS_PREFIX = 'dsh-resource://file/'
 export type FileAddress =
   | {
     readonly scope: 'session'
-    /** The session whose workspace root the path is relative to. */
+    /** The session whose workspace root resolves the path. */
     readonly sessionId: string
-    /** Workspace-relative `/`-separated path, no leading `/`; empty for the root itself. */
+    /** Absolute or workspace-relative `/`-separated path; empty for the workspace root itself. */
     readonly path: string
   }
   | {
@@ -58,19 +65,21 @@ function isDriveSegment(segment: string | undefined): boolean {
 }
 
 /**
- * Build the address of a file inside one session's workspace.
- * @param sessionId - the session whose workspace root the path is relative to.
- * @param path - workspace-relative path; backslashes normalize to `/`, a leading `./` or `/` is dropped.
+ * Build the address of a file read through one session.
+ * @param sessionId - the session whose workspace root resolves the path.
+ * @param path - absolute or workspace-relative path; backslashes are normalized
+ *   to `/`, and leading `./` prefixes are dropped (a leading `/` is KEPT: an
+ *   absolute path stays absolute inside the session scope).
  * @returns the `dsh-resource://file/session/<sessionId>/<path>` address.
  */
 export function sessionFileAddress(sessionId: string, path: string): string {
-  const relative = path.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').replace(/^\/+/, '')
-  return `${FILE_ADDRESS_PREFIX}session/${encodeSegment(sessionId)}/${encodePath(relative)}`
+  const normalized = path.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '')
+  return `${FILE_ADDRESS_PREFIX}session/${encodeSegment(sessionId)}/${encodePath(normalized)}`
 }
 
 /**
  * Build the address of a file by its absolute path.
- * @param path - absolute path; backslashes normalize to `/` and the leading `/`
+ * @param path - absolute path; backslashes are normalized to `/` and the leading `/`
  *   is dropped, except that a UNC path keeps one empty first segment.
  * @returns the `dsh-resource://file/absolute/<path>` address.
  */
@@ -82,16 +91,18 @@ export function absoluteFileAddress(path: string): string {
 }
 
 /**
- * Read a file address back into its parts.
+ * Read a file address back into its parts without resolving `.` or `..`.
+ * Query and fragment suffixes are ignored; encoded path segments are decoded.
  * @param address - a candidate address.
  * @returns the parts, or `undefined` when the string is not a
- *   `dsh-resource://file/` URI in a known scope with a valid path.
+ *   `dsh-resource://file/` URI in a known scope with a path, or a segment is
+ *   not validly encoded.
  */
 export function parseFileAddress(address: string): FileAddress | undefined {
   try {
-    const url = new URL(address)
-    if (url.protocol !== 'dsh-resource:' || url.host !== 'file') return undefined
-    const [, scope, ...rest] = url.pathname.split('/')
+    if (!address.startsWith(FILE_ADDRESS_PREFIX)) return undefined
+    const end = address.search(/[?#]/)
+    const [scope, ...rest] = address.slice(FILE_ADDRESS_PREFIX.length, end === -1 ? undefined : end).split('/')
     if (scope === 'session') {
       const [id, ...segments] = rest
       if (id === undefined || id === '' || segments.length === 0) return undefined
@@ -107,8 +118,7 @@ export function parseFileAddress(address: string): FileAddress | undefined {
     }
     return undefined
   } catch {
-    // `new URL` throws on a non-URL and `decodeURIComponent` on a malformed
-    // escape; both mean "not a file address".
+    // `decodeURIComponent` throws URIError on a malformed escape.
     return undefined
   }
 }
@@ -119,10 +129,12 @@ function isAbsolutePath(path: string): boolean {
 }
 
 /**
- * The address for a path as a caller holds it: a relative path, or an absolute
- * path inside the session's workspace, becomes a `session`-scoped address; an
- * absolute path outside it, or one whose workspace root is unknown, becomes an
- * `absolute`-scoped address. (Mirror of `fileAddressFor`.)
+ * The address for a path as a caller holds it: ALWAYS session-scoped. A
+ * relative path, or an absolute path inside the session's workspace, becomes
+ * the relative spelling; an absolute path outside it, or one whose workspace
+ * root is unknown, keeps its absolute path in that session's address. (Mirror
+ * of `fileAddressFor` — on alpha.2 this helper no longer produces the
+ * `absolute` scope, though such addresses still parse.)
  * @param sessionId - the session the path is read in.
  * @param cwd - that session's workspace root, when known.
  * @param path - absolute or workspace-relative path, either separator spelling.
@@ -134,5 +146,5 @@ export function fileAddressFor(sessionId: string, cwd: string | undefined, path:
   const root = cwd === undefined ? '' : cwd.replace(/\\/g, '/').replace(/\/+$/, '')
   if (root !== '' && normalized === root) return sessionFileAddress(sessionId, '')
   if (root !== '' && normalized.startsWith(`${root}/`)) return sessionFileAddress(sessionId, normalized.slice(root.length + 1))
-  return absoluteFileAddress(normalized)
+  return sessionFileAddress(sessionId, normalized)
 }

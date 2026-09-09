@@ -5,7 +5,10 @@
  * (src/client/service.ts `setSurface`).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { createNativeTabRecords } from '../src/client/native/tab-adapter.tsx'
+import { createElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { act } from 'react-dom/test-utils'
+import { createNativeTabRecords, NativeTabBody } from '../src/client/native/tab-adapter.tsx'
 import { registerNativeSurface } from '../src/client/native/index.ts'
 import { createBetterSidebarService, type SidebarSurface } from '../src/client/service.ts'
 import { createSidebarStore } from '../src/client/state.ts'
@@ -162,8 +165,8 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     const store = createSidebarStore()
     store.setSession('s1')
     const service = createBetterSidebarService(store)
-    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null, description: () => 'Runs a shell' })
-    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null, description: () => 'Browse the tree' })
+    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null })
     const records = createNativeTabRecords()
 
     const registered: Array<{ id: string; kind: string; title: (address: string) => string; guide: unknown }> = []
@@ -225,16 +228,76 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(filesType?.guide).toBeDefined()
     // The takeover carries the editor's glyph, so the "Files" guide row is
     // not the only one with a blank icon slot.
-    const filesGuide = filesType?.guide as Array<{ icon?: unknown; description?: () => string }> | undefined
+    const filesGuide = filesType?.guide as Array<{ icon?: unknown; title: () => string; description?: unknown }> | undefined
     expect(filesGuide?.[0]?.icon).toBeDefined()
-    // The guide line is the descriptor's OWN description (the takeover reuses
-    // the editor's), and a descriptor that declares none falls back to the
-    // generic line — otherwise every plugin page would read identically.
-    expect(filesGuide?.[0]?.description?.()).toBe('Browse the tree')
+    // DSH 0.1.5-alpha.2 renders guide entries as icon+title capsules — the
+    // `description` field is GONE from the host contract, so no entry may
+    // carry one (a leftover would be silently ignored, not rendered).
+    expect(filesGuide?.[0]?.description).toBeUndefined()
+    expect('description' in (filesGuide?.[0] ?? {})).toBe(false)
+    expect(filesGuide?.[0]?.title?.()).toBe('Files')
     const terminalGuide = registered.find(entry => entry.kind === 'terminal')?.guide as
-      Array<{ description?: () => string }> | undefined
-    expect(terminalGuide?.[0]?.description?.()).toBe('Runs a shell')
+      Array<{ title: () => string; description?: unknown }> | undefined
+    expect(terminalGuide?.[0]?.description).toBeUndefined()
+    expect('description' in (terminalGuide?.[0] ?? {})).toBe(false)
+    expect(terminalGuide?.[0]?.title?.()).toBe('Terminal')
 
     dispose()
+  })
+})
+
+describe('NativeTabBody full-height host wrapper', () => {
+  it('renders the descriptor component inside the [data-dsh-native-tab-host] wrapper', () => {
+    // DSH's native tab body host (`.paneBody`) is a BLOCK scroller with a
+    // definite height, not a flex container — our tab roots (`flex: 1;
+    // min-height: 0`) collapse there without a column-flex wrapper of
+    // height:100%. The stable `data-dsh-native-tab-host` marker (mirroring
+    // `data-dsh-better-sidebar`) lets the e2e lane assert the fill; this
+    // unit check pins the structure: the marker wrapper exists and the
+    // descriptor's output is INSIDE it (before the fix the component was
+    // rendered bare, with no wrapper at all).
+    const store = createSidebarStore()
+    store.setSession('s1')
+    const service = createBetterSidebarService(store)
+    service.registerTab({
+      id: 'stub',
+      title: 'Stub',
+      component: () => createElement('div', { 'data-stub-body': '' }, 'stub body'),
+    })
+    const records = createNativeTabRecords()
+    const sessions = { list: { subscribe: () => () => {}, getSnapshot: () => ({ byId: {} }) } }
+    const ctx = { sessions } as never
+    const info = {
+      tab: {
+        id: 'native-9',
+        kind: 'stub',
+        title: 'Stub',
+        contentId: 'sidebar://stub',
+        visible: true,
+        navigation: { address: 'sidebar://stub', params: undefined, revision: 0 },
+        signal: new AbortController().signal,
+      },
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    let root: Root | undefined
+    act(() => {
+      root = createRoot(host)
+      root.render(createElement(NativeTabBody, {
+        sessionId: 's1',
+        ctx,
+        store,
+        service,
+        records,
+        descriptorId: 'stub',
+        useTabInfo: () => info,
+      }))
+    })
+    const wrapper = host.querySelector('[data-dsh-native-tab-host=""]')
+    expect(wrapper, 'the full-height host wrapper must exist').not.toBeNull()
+    expect(wrapper!.querySelector('[data-stub-body]'), 'the descriptor component renders inside the wrapper').not.toBeNull()
+    expect(wrapper!.childElementCount).toBe(1)
+    act(() => { root?.unmount() })
+    host.remove()
   })
 })

@@ -82,7 +82,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
   return [
     {
       id: 'editor',
-      description: () => t('guideDescFiles'),
       // The single files window: an editor tab with no path IS the file
       // explorer (empty hint + docked tree); with a path it previews/edits
       // the file. Visible in the + menu in the explorer's old slot.
@@ -149,7 +148,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
       // log, and the git status needs a fetch — both stay out of the badge).
       id: 'git',
       title: () => t('changes'),
-      description: () => t('guideDescGit'),
       icon: (size: number) => <IconDiffOutline16 size={size} />,
       order: 20,
       single: true,
@@ -172,7 +170,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'subagent',
       title: () => t('subagent'),
-      description: () => t('guideDescSubagent'),
       icon: (size: number) => <IconThinkOutline16 size={size} />,
       order: 30,
       single: true,
@@ -201,7 +198,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'sidechat',
       title: () => t('sideChat'),
-      description: () => t('guideDescSidechat'),
       icon: (size: number) => <IconNewChatOutline16 size={size} />,
       order: 35,
       // Codex-style: EVERY side conversation is its own tab. A plain open
@@ -247,7 +243,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'terminal',
       title: () => t('terminal'),
-      description: () => t('guideDescTerminal'),
       icon: (size: number) => <IconTerminalOutline16 size={size} />,
       order: 40,
       available: (_ctx, _scope, state) => uiTerminalCount(state) < TERMINAL_LIMIT,
@@ -312,7 +307,6 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'browser',
       title: () => t('browser'),
-      description: () => t('guideDescBrowser'),
       icon: (size: number) => <IconGlobeOutline16 size={size} />,
       order: 50,
       // Declarative settings: the sandbox escape hatch, the link-takeover

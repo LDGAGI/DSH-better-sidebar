@@ -15,8 +15,11 @@
  * transitions so the reserved edge tracks the pointer.
  */
 /* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx
-   locate/measureCenter) tags the measured column node with
-   [data-dsh-center-col] — one attribute write per node lifetime. The rule
+   locate/measureCenter, resolving via center-column.ts) tags the measured
+   column node with [data-dsh-center-col] — one attribute write per node
+   lifetime. The locator anchors on the conversation slot host
+   (`main.conversation` on DSH 0.1.5-alpha.2+, `conversation` on alpha.1)
+   and skips the transparent display:contents slot hosts above it. The rule
    used to anchor on a structural has()-selector over the conversation slot
    wrapper, whose match cache invalidates on every #root subtree mutation
    (the streaming chat mutates it constantly), re-evaluating the selector
