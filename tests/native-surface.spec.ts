@@ -88,7 +88,7 @@ describe('service routing into the native surface', () => {
     service.setSurface(surface)
     service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null, createTab: state => ({ tab: { id: `terminal:${state.nextTerminal}`, type: 'terminal', title: 'Terminal', meta: { n: state.nextTerminal } } }) })
     service.registerTab({ id: 'git', title: 'Changes', component: () => null })
-    service.registerTab({ id: 'editor', title: 'Files', component: () => null })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null })
     return { surface, calls, service }
   }
 
@@ -163,7 +163,7 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     store.setSession('s1')
     const service = createBetterSidebarService(store)
     service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null })
-    service.registerTab({ id: 'editor', title: 'Files', component: () => null })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null })
     const records = createNativeTabRecords()
 
     const registered: Array<{ id: string; kind: string; title: (address: string) => string; guide: unknown }> = []
@@ -223,6 +223,10 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(editorType?.guide).toBeUndefined()
     const filesType = registered.find(entry => entry.kind === 'files')
     expect(filesType?.guide).toBeDefined()
+    // The takeover carries the editor's glyph, so the "Files" guide row is
+    // not the only one with a blank icon slot.
+    const filesGuide = filesType?.guide as Array<{ icon?: unknown }> | undefined
+    expect(filesGuide?.[0]?.icon).toBeDefined()
 
     dispose()
   })

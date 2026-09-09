@@ -64,6 +64,17 @@ function titleOf(descriptor: TabDescriptor): string {
 }
 
 /**
+ * The guide row's glyph for a descriptor icon (nothing when it has none).
+ * The native guide renders `entry.icon`, so a takeover registered without one
+ * is the only row in the list with a blank leading slot.
+ * @param icon - the descriptor's icon value.
+ * @returns the guide-entry icon fields, or an empty object.
+ */
+function guideIconOf(icon: TabDescriptor['icon']): { icon?: (props: { size?: number }) => unknown } {
+  return typeof icon === 'function' ? { icon: (props: { size?: number }) => icon(props.size ?? 16) } : {}
+}
+
+/**
  * The chip title of a file address: its own file name. A resource tab is
  * identified by its address, so the strip must name the FILE — the
  * descriptor's title ("Files") would make every open file look identical.
@@ -171,9 +182,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
               order: descriptor.order ?? 100,
               title: () => titleOf(descriptor),
               description: () => t('nativeGuideDesc'),
-              ...(typeof icon === 'function'
-                ? { icon: (props: { size?: number }) => icon(props.size ?? 16) }
-                : {}),
+              ...guideIconOf(icon),
             }],
           }),
       })
@@ -189,7 +198,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
     }
 
     /** One `files`-kind takeover: the plugin's explorer under the built-in kind. */
-    const registerFilesKind = (): (() => void) => {
+    const registerFilesKind = (editor: TabDescriptor | undefined): (() => void) => {
       const id = 'dsh-better-sidebar:files'
       const disposeType = tabs.register({
         id,
@@ -200,6 +209,10 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
           order: 10,
           title: () => t('files'),
           description: () => t('nativeGuideDesc'),
+          // The takeover IS the editor descriptor's page, so it carries the
+          // editor's glyph: without it the "Files" row is the only guide
+          // entry with an empty icon slot.
+          ...guideIconOf(editor?.icon),
         }],
       })
       const slots = registerSlots(id, { ctx, store, service, records, descriptorId: EDITOR_KIND }, {})
@@ -229,7 +242,9 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
       // editor disabled the plugin has no explorer to put there.
       const wantsFiles = service.isTabEnabled(EDITOR_KIND)
       const hasFiles = live.has(FILES_KIND)
-      if (wantsFiles && !hasFiles) live.set(FILES_KIND, { dispose: registerFilesKind() })
+      if (wantsFiles && !hasFiles) {
+        live.set(FILES_KIND, { dispose: registerFilesKind(service.getTab(EDITOR_KIND)) })
+      }
       if (!wantsFiles && hasFiles) {
         live.get(FILES_KIND)?.dispose()
         live.delete(FILES_KIND)
