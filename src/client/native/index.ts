@@ -85,15 +85,18 @@ export interface NativeSurfaceDeps {
  */
 export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
   const { ctx, store, service, records } = deps
-  const disposers: Array<() => void> = []
-  // The native seat declares `sidebar.right.pane.tab` when its client half
-  // activates, which may be after this plugin; the slot registry's `inject`
-  // re-runs on every declaration lifetime, and the tab-type registry
-  // (`ctx.sidebarRightTabs`) is provided by that same package, so one wait
-  // covers both.
-  const disposeSeat = ctx.slots.inject('sidebar.right.pane.tab', () => {
-    const tabs = ctx.get('sidebarRightTabs') as unknown as NativeTabRegistry | undefined
-    if (tabs === undefined) return () => {}
+  // Wait for the tab-type REGISTRY (a service), not for the slot declaration:
+  // the native seat declares `sidebar.right.pane.tab` BEFORE it provides
+  // `sidebarRightTabs`, so a declaration-triggered registration reads the
+  // service as missing and — because the declaration never collapses —
+  // registers nothing, permanently. Observed on a real profile: the
+  // declaration callback fired with both `sidebarRight` and
+  // `sidebarRightTabs` undefined, and the registry appeared a moment later.
+  // `ctx.inject` re-runs this body whenever the service appears/reappears,
+  // which is the lifecycle the registrations need.
+  const seat = ctx.inject(['sidebarRightTabs'], (injected) => {
+    const tabs = injected.get('sidebarRightTabs') as unknown as NativeTabRegistry | undefined
+    if (tabs === undefined) return
     const live = new Map<string, Registration>()
 
     const fileParamsOf = (info: NativeTabInfo): NativeTabParams | undefined => {
@@ -213,16 +216,16 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
       }
     }
 
-    disposers.push(service.subscribe(sync), store.subscribe(sync))
+    const disposeSubscriptions = [service.subscribe(sync), store.subscribe(sync)]
     sync()
     return () => {
       for (const registration of live.values()) registration.dispose()
       live.clear()
+      for (const dispose of disposeSubscriptions.reverse()) dispose()
     }
   })
   return () => {
-    disposeSeat()
-    for (const dispose of disposers.reverse()) dispose()
+    void seat.dispose()
   }
 }
 

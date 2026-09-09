@@ -6,6 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { createNativeTabRecords } from '../src/client/native/tab-adapter.tsx'
+import { registerNativeSurface } from '../src/client/native/index.ts'
 import { createBetterSidebarService, type SidebarSurface } from '../src/client/service.ts'
 import { createSidebarStore } from '../src/client/state.ts'
 
@@ -147,5 +148,68 @@ describe('service routing into the native surface', () => {
     })
     service.openTab({ type: 'missing' }, scope)
     expect(calls).toEqual([])
+  })
+})
+
+describe('registerNativeSurface lifecycle (service-driven registration)', () => {
+  it('registers the native tab types when the tab-type registry ARRIVES after the slot declaration', () => {
+    // Regression: the native seat declares `sidebar.right.pane.tab` before it
+    // provides `sidebarRightTabs`, so a registration driven by the slot
+    // declaration reads the service as missing and registers nothing —
+    // observed on a real DSH profile (the guide page stayed empty while the
+    // same build worked in the scratch mount lane, where activation order
+    // happened to differ). The registration must follow the SERVICE.
+    const store = createSidebarStore()
+    store.setSession('s1')
+    const service = createBetterSidebarService(store)
+    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null })
+    const records = createNativeTabRecords()
+
+    const registered: Array<{ id: string; kind: string }> = []
+    const slotKeys: string[] = []
+    // The registry is ABSENT while the slot callback fires and appears later
+    // (that ordering is the regression): a holder keeps the timing honest
+    // without a reassigned binding.
+    const registry: { current: { register: (definition: { id: string; kind: string }) => () => void } | undefined } = { current: undefined }
+    let runInjected: (() => void) | undefined
+
+    const ctx = {
+      inject: (deps: readonly string[], callback: (injected: { get: (name: string) => unknown }) => void) => {
+        expect(deps).toEqual(['sidebarRightTabs'])
+        runInjected = () => { callback({ get: () => registry.current }) }
+        return { dispose: () => { runInjected = undefined } }
+      },
+      get: () => registry.current,
+      slots: {
+        // The slot is already declared when this plugin activates: the
+        // callback runs immediately, with no service in sight.
+        inject: (_key: string, callback: () => () => void) => callback(),
+        register: (options: { name: string; key?: string }) => {
+          slotKeys.push(options.key ?? options.name)
+          return () => {}
+        },
+      },
+    }
+    const dispose = registerNativeSurface({ ctx: ctx as never, store, service, records })
+
+    // Nothing may register while the registry is absent…
+    expect(registered).toHaveLength(0)
+    expect(slotKeys).toHaveLength(0)
+
+    // …and everything registers once it appears.
+    registry.current = {
+      register: (definition) => {
+        registered.push({ id: definition.id, kind: definition.kind })
+        return () => {}
+      },
+    }
+    runInjected?.()
+    expect(registered.map(entry => entry.kind).sort()).toEqual(['editor', 'files', 'terminal'])
+    expect(registered.map(entry => entry.id)).toContain('dsh-better-sidebar:files')
+    expect(slotKeys).toContain('dsh-better-sidebar:terminal')
+    expect(slotKeys).toContain('dsh-better-sidebar:files')
+
+    dispose()
   })
 })
