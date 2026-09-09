@@ -26,14 +26,14 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
-import { PAGE_URL, createHostApi, hostRpc } from './host'
+import { PAGE_URL, createHostApi, hostRpc, sendFirstMessage } from './host'
 
 /** This lane's own workspace (lanes run serially against one server — never
  *  share seed paths with mount/drag). */
 const WORKSPACE_PATH = process.env.DSH_E2E_PERF_WORKSPACE ?? join(tmpdir(), 'dsh-e2e-perf-workspace')
 
 /** Built-in tab titles the sweep drives (en-US copy; follows DSH locale). */
-const BUILTIN_TABS = ['Files', 'Changes', 'Tasks', 'Side Chat (beta)', 'Terminal', 'Browser']
+const NATIVE_TABS = ['files', 'git', 'subagent', 'sidechat', 'terminal', 'browser']
 
 let api: APIRequestContext
 
@@ -122,24 +122,23 @@ test('measure: mount latency, longtasks and bundle cost through a full tab sweep
 
   await dismissOnboarding(page)
 
-  // Open the panel, then sweep every built-in tab through the "+" menu — the
-  // same crash-sweep surface as mount.e2e.ts, reused here as the workload.
-  const expandButton = sidebar.getByRole('button', { name: 'Expand sidebar' })
-  await expect(expandButton).toHaveCount(1)
-  await expandButton.click()
-  await expect
-    .poll(async () => {
-      const value = await page.evaluate(() => document.documentElement.style.getPropertyValue('--dsh-sidebar-width'))
-      return value !== '' && value !== '0px'
-    }, { timeout: 90_000 })
-    .toBe(true)
+  // The native Sidebar's way in lives in the conversation header's corner,
+  // which DSH renders only for a session with content.
+  await sendFirstMessage(page)
 
-  const newTabButton = sidebar.getByRole('button', { name: 'New tab' }).first()
-  for (const title of BUILTIN_TABS) {
-    await newTabButton.click()
-    const item = page.getByRole('menuitem', { name: title }).first()
-    await expect(item, `built-in tab "${title}" must be offered by the + menu`).toHaveCount(1)
-    await item.click()
+  // Open DSH's native right Sidebar and sweep every plugin tab type through
+  // its guide page — the same crash-sweep surface as mount.e2e.ts, reused
+  // here as the workload (the plugin's content lives in the native surface on
+  // 0.1.5; the plugin's own panel keeps only its bottom workbench).
+  await page.locator('[data-sidebar-right-expand]').first().click()
+  const pane = page.locator('[data-sidebar-right-panel]')
+  await expect(pane).toBeVisible({ timeout: 90_000 })
+  const addTab = page.locator('[data-dockkit-add-tab]').first()
+  for (const kind of NATIVE_TABS) {
+    if (await page.locator('[data-sidebar-right-guide]').count() === 0) await addTab.click()
+    const entry = page.locator(`[data-sidebar-right-guide-entry="${kind}"]`)
+    await expect(entry, `native tab type "${kind}" must be offered by the guide`).toHaveCount(1)
+    await entry.click()
     await page.waitForTimeout(1_500)
   }
 

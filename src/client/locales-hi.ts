@@ -17,6 +17,7 @@
 /** The hi dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const hi: Record<string, string> = {
   files: 'फ़ाइलें',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'इस सत्र में अभी कोई फ़ाइल ऑपरेशन नहीं',
   changesRead: 'पढ़ना',
   changesMdReading: 'पठन',

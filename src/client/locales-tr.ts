@@ -17,6 +17,7 @@
 /** The tr dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const tr: Record<string, string> = {
   files: 'Dosyalar',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Bu oturumda henüz dosya işlemi yok',
   changesRead: 'Okuma',
   changesMdReading: 'Okuma',

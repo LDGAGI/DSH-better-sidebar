@@ -1,5 +1,6 @@
 export const pt: Record<string, string> = {
   files: 'Arquivos',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Ainda sem operações de arquivo nesta sessão',
   changesRead: 'Leitura',
   changesMdReading: 'Leitura',

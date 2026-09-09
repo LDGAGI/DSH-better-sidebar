@@ -10,6 +10,7 @@
 /** fr dictionary for the `betterSidebar` namespace. */
 export const fr: Record<string, string> = {
   files: 'Fichiers',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Aucune opération de fichier dans cette session',
   changesRead: 'Lecture',
   changesMdReading: 'Lecture',

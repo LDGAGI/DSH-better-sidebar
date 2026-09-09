@@ -17,6 +17,7 @@
 /** The th dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const th: Record<string, string> = {
   files: 'ไฟล์',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'ยังไม่มีการดำเนินการไฟล์ในเซสชันนี้',
   changesRead: 'อ่าน',
   changesMdReading: 'อ่าน',

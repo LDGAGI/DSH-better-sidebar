@@ -23,8 +23,8 @@ import type { ReactNode } from 'react'
 import type { Context } from '../context-types.ts'
 import {
   activateTab as activateTabReducer, allLeaves, closeTab as closeTabReducer, closeFloatByTab, floatWithTab,
-  leafWithTab, openTabInActivePane, patchTab, raiseFloat, tabOpenIn, togglePanel, treeOf,
-  type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab,
+  leafWithTab, openTabInActivePane, openTabInBottomPane, patchTab, raiseFloat, tabOpenIn, togglePanel, treeOf,
+  type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab, type TabType,
 } from './state.ts'
 import { isNarrowWidth } from './breakpoints.ts'
 import { extOf } from './paths.ts'
@@ -339,6 +339,57 @@ export interface OpenTabSeed {
   url?: string
   /** JSON-serializable custom state carried on the minted tab (persisted across reloads; v0.12.0+). */
   meta?: unknown
+  /**
+   * Where the open lands. `'right'` (the default) is DSH's right Sidebar —
+   * the plugin's content is registered there as native tab types; `'bottom'`
+   * is the plugin's own bottom workbench. Only the plugin's own flows pass
+   * `'bottom'` (the bottom panel's + menu, the auto-terminal).
+   */
+  target?: 'right' | 'bottom'
+}
+
+/**
+ * The plugin-side seed a native right-Sidebar tab carries in its navigation
+ * params (the native surface passes them back on every navigation).
+ */
+export interface NativeTabParams {
+  /** Overrides the descriptor's title for this instance. */
+  title?: string
+  /** A file path (the editor window's content seed). */
+  path?: string
+  /** A URL the tab navigates to on mount (the browser tab's seed). */
+  url?: string
+  /** A diff reference (the diff tab's content seed). */
+  diff?: SidebarTab['diff']
+  /** JSON-serializable custom state carried on the synthetic record. */
+  meta?: unknown
+}
+
+/**
+ * The plugin's write face over DSH's native right Sidebar.
+ *
+ * Installed by the client half ({@link ./native/surface.ts}) so the service —
+ * and therefore every consumer of `ctx.betterSidebar` — keeps speaking the
+ * plugin's own vocabulary while the content lands natively. Without it the
+ * service writes into the plugin's own layout (the pre-0.1.5 behavior, which
+ * the bottom workbench still uses).
+ * @internal Not part of the consumer contract.
+ */
+export interface SidebarSurface {
+  /** Open a page type in one session's native surface. */
+  openTab(input: { sessionId: string; kind: string; params: NativeTabParams; revealIfOpened: boolean }): void
+  /** Open a resource address in one session's native surface. */
+  openResource(input: { sessionId: string; address: string; line?: number; revealIfOpened: boolean }): void
+  /** The file address of one path (the native surface owns the grammar). */
+  fileAddress(sessionId: string, cwd: string | undefined, path: string): string
+  /** Close one native tab; the closed record's type/title, or undefined when the id is not native. */
+  close(sessionId: string, tabId: string): { type: string; title: string } | undefined
+  /** Patch a native tab's plugin-side record; false when it is not native. */
+  update(tabId: string, patch: { title?: string; path?: string; meta?: unknown }): boolean
+  /** Focus a native tab; false when it is not native. */
+  activate(tabId: string): boolean
+  /** Whether a tab id belongs to the native surface. */
+  has(tabId: string): boolean
 }
 
 /**
@@ -426,6 +477,11 @@ export interface BetterSidebarService {
   activateTab(tabId: string, scope?: SessionScope): void
   /** Open a file in the sidebar editor of `scope`'s session (title defaults to the file name). */
   openFile(scope: SessionScope, path: string, title?: string): void
+  /**
+   * Install (or clear) the native right-Sidebar write face.
+   * @internal Called once by the client half; not part of the consumer API.
+   */
+  setSurface(surface: SidebarSurface | undefined): void
 }
 
 /** The file name of a path (both separators). */
@@ -516,6 +572,8 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   const tabs = new Map<string, TabDescriptor>()
   const viewers = new Map<string, FileViewerDescriptor>()
   const listeners = new Set<() => void>()
+  /** The native right-Sidebar write face, installed by the client half. */
+  let surface: SidebarSurface | undefined
 
   const notify = (): void => {
     for (const fn of [...listeners]) fn()
@@ -608,6 +666,61 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId
     if (targetSessionId === undefined) return
     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
+    // ── Native right Sidebar ──────────────────────────────────────────────
+    // With the native surface installed, every open except an explicit
+    // bottom-panel one lands there: a file path becomes a resource address
+    // (the native registry routes it to the plugin's file type), a path-less
+    // editor open becomes the `files` page kind, and everything else becomes
+    // a page open carrying the seed as navigation params.
+    if (surface !== undefined && seed.target !== 'bottom') {
+      const state = store.getSnapshot().state
+      // The descriptor's own factory mints what a view needs beyond the seed:
+      // the side chat's thread bootstrap / reattach meta, the terminal's
+      // per-instance title. A `null` return refuses the open (terminal cap).
+      const minted = descriptor.createTab === undefined || state === undefined
+        ? undefined
+        : descriptor.createTab(state)
+      if (minted === null) return
+      const title = seed.title ?? minted?.tab.title
+        ?? (typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title)
+      // Multi-instance kinds (terminal / browser / side chat / diff) mint a
+      // fresh tab per open; single-instance kinds focus the existing one.
+      const revealIfOpened = descriptor.createTab === undefined
+      const synthetic: SidebarTab = {
+        id: seed.id ?? minted?.tab.id ?? seed.type,
+        type: seed.type,
+        title,
+        ...(seed.path === undefined ? {} : { path: seed.path }),
+        ...(seed.diff === undefined ? {} : { diff: seed.diff }),
+        ...(seed.meta === undefined && minted?.tab.meta === undefined ? {} : { meta: seed.meta ?? minted?.tab.meta }),
+      }
+      if (seed.path !== undefined) {
+        surface.openResource({
+          sessionId: targetSessionId,
+          address: surface.fileAddress(targetSessionId, scope?.cwd, seed.path),
+          revealIfOpened: true,
+        })
+      } else if (seed.type === 'editor') {
+        // The path-less editor window IS the file explorer.
+        surface.openTab({ sessionId: targetSessionId, kind: 'files', params: {}, revealIfOpened: true })
+      } else {
+        surface.openTab({
+          sessionId: targetSessionId,
+          kind: seed.type,
+          params: {
+            title,
+            ...(seed.url === undefined ? {} : { url: seed.url }),
+            ...(seed.diff === undefined ? {} : { diff: seed.diff }),
+            ...(synthetic.meta === undefined ? {} : { meta: synthetic.meta }),
+          },
+          revealIfOpened,
+        })
+      }
+      // The native surface reports one open event, not create-vs-focus, so a
+      // lifecycle consumer hears onOpen (documented in the guide).
+      safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
+      return
+    }
     // Whether this open targets a session that is NOT the one on screen: a
     // targeted open must not auto-expand panels the user cannot see (the
     // expansion is about landing "in sight" for the CURRENT viewer).
@@ -617,6 +730,10 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     // dedupe/id-safety-net focus is an ACTIVATION, not an open).
     let created: SidebarTab | undefined
     let activated: SidebarTab | undefined
+    // A bottom-targeted open lands in the bottom workbench's own pane; the
+    // right tree it would otherwise follow is no longer rendered (DSH's
+    // native sidebar owns the right column).
+    const land = seed.target === 'bottom' ? openTabInBottomPane : openTabInActivePane
     const reducer = (state: SidebarState): SidebarState => {
       // Let the descriptor mint the tab (terminal's nextTerminal bump, etc.).
       let tab: SidebarTab
@@ -625,7 +742,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
         const result = descriptor.createTab(state)
         if (result === null) return state
         tab = result.tab
-        next = applyDedupe(state, result.tab, descriptor)
+        next = applyDedupe(state, result.tab, descriptor, land)
         if (result.patch !== undefined) next = { ...next, ...result.patch }
       } else {
         tab = {
@@ -638,7 +755,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
           ...(seed.diff !== undefined ? { diff: seed.diff } : {}),
           ...(seed.meta !== undefined ? { meta: seed.meta } : {}),
         }
-        next = applyDedupe(state, tab, descriptor)
+        next = applyDedupe(state, tab, descriptor, land)
       }
       // Classify the landing against the INPUT state FIRST: a FOCUS fires
       // onActivate with the tab that is active NOW; a real creation fires
@@ -735,6 +852,20 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   }
 
   const closeTab = (tabId: string, scope?: SessionScope): void => {
+    const sessionId = scope?.sessionId ?? store.getSnapshot().sessionId
+    if (surface !== undefined && sessionId !== undefined) {
+      const closedNative = surface.close(sessionId, tabId)
+      if (closedNative !== undefined) {
+        const descriptor = tabs.get(closedNative.type)
+        if (descriptor !== undefined) {
+          safeCall(() => descriptor.onClose?.(
+            { id: tabId, type: closedNative.type as TabType, title: closedNative.title },
+            scope ?? { sessionId },
+          ))
+        }
+        return
+      }
+    }
     let closed: SidebarTab | undefined
     store.reduce((state) => {
       // Unknown tab ids are a strict no-op: no state churn, no notify, no
@@ -769,6 +900,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
 
   /** Patch an open tab's display fields (a missing tab id is a no-op). */
   const updateTab = (tabId: string, patch: { title?: string; path?: string; meta?: unknown }): void => {
+    if (surface?.update(tabId, patch) === true) return
     store.reduce((state) => patchTab(state, tabId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.path !== undefined ? { path: patch.path } : {}),
@@ -778,6 +910,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
 
   /** Activate an open tab (the tab-bar activation path; fires onActivate). */
   const activateTab = (tabId: string, scope?: SessionScope): void => {
+    if (surface?.activate(tabId) === true) return
     let activated: SidebarTab | undefined
     store.reduce((state) => {
       // Unknown tab ids are a strict no-op (no state churn / notify).
@@ -829,6 +962,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     updateTab,
     activateTab,
     openFile,
+    setSurface: (next: SidebarSurface | undefined) => { surface = next },
   }
 }
 
@@ -839,7 +973,12 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
  * reducer's job — not re-implemented here).
  * `single: true` resolves to the id-key sugar when no explicit key is given.
  */
-function applyDedupe(state: SidebarState, tab: SidebarTab, descriptor: TabDescriptor): SidebarState {
+function applyDedupe(
+  state: SidebarState,
+  tab: SidebarTab,
+  descriptor: TabDescriptor,
+  land: (state: SidebarState, tab: SidebarTab) => SidebarState = openTabInActivePane,
+): SidebarState {
   const dedupeKey = descriptor.dedupeKey ?? (descriptor.single === true ? () => descriptor.id : undefined)
   const key = dedupeKey?.(tab)
   if (key !== undefined) {
@@ -854,7 +993,7 @@ function applyDedupe(state: SidebarState, tab: SidebarTab, descriptor: TabDescri
     const floated = state.floats.find(f => f.tab.type === tab.type && dedupeKey!(f.tab) === key)
     if (floated !== undefined) return raiseFloat(state, floated.id)
   }
-  return openTabInActivePane(state, tab)
+  return land(state, tab)
 }
 
 /** Find which pane hosts a tab id ('' if none). Either tree is searched. */

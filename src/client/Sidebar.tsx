@@ -33,7 +33,7 @@ import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import { IconCloseFill14, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
-import { appendToDraft, insertFileReference } from './conversation-draft.ts'
+import { referenceInChat as referenceInChatShared } from './reference-in-chat.ts'
 import {
   BOTTOM_MIN, PANEL_MIN, agentUuidOf, firstLeaf, floatTab,
   isAgentTabId, leafWithTab, migrateBottomTabs,
@@ -56,7 +56,6 @@ import { useHostFeeds } from './sidebar/use-host-feeds.ts'
 import { usePinnedTabs } from './sidebar/use-pinned-tabs.ts'
 import { FreeWindowLayer, useFloatDragout } from './sidebar/free-windows.tsx'
 import type { TabDragPayload } from './TabBar.tsx'
-import { relativeTo } from './paths.ts'
 import { t } from './locales.ts'
 import { api } from './api.ts'
 import css from './sidebar.module.css'
@@ -102,8 +101,23 @@ function injectUserCss(attr: string, id: string, cssText: string): HTMLStyleElem
   return tag
 }
 
-export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+export function Sidebar(props: { ctx: Context; store: SidebarStore; nativeSurface?: boolean }) {
   const { ctx, store } = props
+  // With DSH's native right Sidebar owning the right column, this panel keeps
+  // only its bottom workbench: the right panel and its toggle are not offered.
+  const nativeSurface = props.nativeSurface === true
+
+  // Keep the retired right panel collapsed: nothing routes content into it any
+  // more, so an open state (restored from a pre-0.1.5 layout, or written by a
+  // stale flow) would reserve width for an empty column.
+  useEffect(() => {
+    if (!nativeSurface) return
+    const enforce = (): void => {
+      store.reduce(state => (state.panelOpen ? { ...state, panelOpen: false } : state))
+    }
+    enforce()
+    return store.subscribe(enforce)
+  }, [nativeSurface, store])
 
   // Copy freshness: re-render the whole tree when the DSH locale switches.
   // The module-level t() reads the active locale at call time, so a root
@@ -391,7 +405,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     // Land the tab in the bottom panel's first pane; the once-flag is set
     // atomically so later expansions never repeat the auto-open.
     store.reduce(s => ({ ...s, activePane: firstLeaf(s.bottomSplits).id, bottomOpenedOnce: true }))
-    ctx.get('betterSidebar')?.openTab({ type: 'terminal' })
+    ctx.get('betterSidebar')?.openTab({ type: 'terminal', target: 'bottom' })
   }, [state, store, ctx, narrow])
 
   // Panel drags: the right panel's width (left edge strip), the bottom
@@ -752,14 +766,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
    */
   const referenceInChat = useCallback((path: string, isDir: boolean): void => {
     if (sessionId === undefined) return
-    const rel = relativeTo(cwd ?? '', path)
-    if (isDir) {
-      appendToDraft(ctx, sessionId, `@${rel === '.' ? './' : `${rel}/`}`)
-      return
-    }
-    if (!insertFileReference(ctx, sessionId, rel)) {
-      appendToDraft(ctx, sessionId, `@${rel}`)
-    }
+    referenceInChatShared(ctx, sessionId, cwd, path, isDir)
   }, [ctx, sessionId, cwd])
 
   if (state === undefined || sessionId === undefined) {
@@ -797,14 +804,16 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     viewportHeight: layoutViewportHeight,
   }).height
 
-  const onNewTab = (optionId: string): void => {
+  const onNewTab = (optionId: string, target: 'right' | 'bottom' = 'right'): void => {
     const service = ctx.get('betterSidebar')
     const descriptor = service?.getTab(optionId)
     if (service === undefined || descriptor === undefined) return
     const title = typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
     // The session scope rides along: lifecycle callbacks receive it (and
-    // the open stays in the current session, as before).
-    service.openTab({ type: optionId, title }, { sessionId, cwd })
+    // the open stays in the current session, as before). The bottom panel's
+    // own + menu passes 'bottom' so the tab lands in THIS workbench, not in
+    // the native right Sidebar.
+    service.openTab({ type: optionId, title, target }, { sessionId, cwd })
   }
 
   /**
@@ -915,16 +924,18 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             </button>
           </Tooltip>
         )}
-        <Tooltip label={state.panelOpen ? t('collapse') : t('expand')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={css.toggleButton}
-            aria-label={state.panelOpen ? t('collapse') : t('expand')}
-            onClick={() => { store.reduce(togglePanel) }}
-          >
-            <IconPanelRightOutline16 />
-          </button>
-        </Tooltip>
+        {!nativeSurface && (
+          <Tooltip label={state.panelOpen ? t('collapse') : t('expand')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.toggleButton}
+              aria-label={state.panelOpen ? t('collapse') : t('expand')}
+              onClick={() => { store.reduce(togglePanel) }}
+            >
+              <IconPanelRightOutline16 />
+            </button>
+          </Tooltip>
+        )}
       </div>
       {/*
         The right panel stays mounted while collapsed (hidden off-screen) so
@@ -1147,7 +1158,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             tree={state.bottomSplits}
             newTabOptions={newTabOptions}
             actions={actions}
-            onNewTab={onNewTab}
+            onNewTab={(optionId) => { onNewTab(optionId, 'bottom') }}
             renderTab={(tab, active, paneId) => renderTab(tab, active, paneId, 'bottom')}
             getTabIcon={tabIconOf}
             getTabBadge={tabBadgeOf}

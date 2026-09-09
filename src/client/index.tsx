@@ -18,6 +18,9 @@ import { registerBuiltins } from './builtins/index.ts'
 import { Sidebar } from './Sidebar.tsx'
 import { RenderBoundary } from './RenderBoundary.tsx'
 import { registerTurnTailInterception } from './intercept.tsx'
+import { createNativeTabRecords } from './native/tab-adapter.tsx'
+import { registerNativeSurface } from './native/index.ts'
+import { createNativeSurface } from './native/surface.ts'
 import { registerLinkInterception } from './link-intercept.ts'
 import { registerImeGuard } from './ime-guard.ts'
 import { registerSettingsNavIcon } from './settings-nav-icon.ts'
@@ -137,6 +140,21 @@ export function apply(ctx: Context): void {
   // are ready by the time the sidebar renders.
   const service = createBetterSidebarService(sidebarStore)
   ctx.provide('betterSidebar', service)
+  // The native right-Sidebar surface: the plugin's content is registered as
+  // DSH tab types (one per descriptor) and every open routes there, so the
+  // right column belongs to the host and only the bottom workbench stays
+  // plugin-owned. Both halves live for this fiber's lifetime.
+  const nativeRecords = createNativeTabRecords()
+  const nativeSurface = createNativeSurface(ctx, nativeRecords)
+  service.setSurface(nativeSurface)
+  ctx.effect(
+    () => registerNativeSurface({ ctx, store: sidebarStore, service, records: nativeRecords }),
+    'dsh-better-sidebar: native right-Sidebar registrations',
+  )
+  ctx.effect(
+    () => () => { nativeSurface.dispose(); service.setSurface(undefined) },
+    'dsh-better-sidebar: native right-Sidebar surface',
+  )
   // Terminal tab titles use the host's effective shell name (e.g. bash/zsh)
   // instead of "Terminal 1". Start with a safe fallback and replace it as
   // soon as the host shell info resolves. Tabs created before the response
@@ -284,7 +302,7 @@ export function apply(ctx: Context): void {
           host.setAttribute('data-dsh-better-sidebar', '')
           document.body.appendChild(host)
           root = createRoot(host)
-          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore })))
+          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore, nativeSurface: true })))
           mounted = true
           guardAnchor()
           scheduleHostCheck()

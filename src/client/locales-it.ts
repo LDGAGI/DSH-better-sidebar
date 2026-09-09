@@ -8,6 +8,7 @@
 
 export const it: Record<string, string> = {
   files: 'File',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Ancora nessuna operazione sui file in questa sessione',
   changesRead: 'Lettura',
   changesMdReading: 'Lettura',

@@ -24,6 +24,7 @@
 /** The zh dictionary (also registered into the DSH locale registry under {@link LOCALE_NS}). */
 export const zh = {
   files: '文件',
+  nativeGuideDesc: '在 DSH 原生右侧栏打开',
   changesSessionEmpty: '本会话还没有文件操作',
   changesRead: '读取',
   changesMdReading: '阅读',
@@ -472,6 +473,7 @@ export const zh = {
 /** The en dictionary (key-set-equal to zh, enforced by the type annotation). */
 export const en: Record<keyof typeof zh, string> = {
   files: 'Files',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'No file operations in this session yet',
   changesRead: 'Read',
   changesMdReading: 'Reading',

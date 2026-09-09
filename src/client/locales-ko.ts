@@ -9,6 +9,7 @@
 
 export const ko: Record<string, string> = {
   files: '파일',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: '이 세션에 아직 파일 작업이 없습니다',
   changesRead: '읽기',
   changesMdReading: '읽기',

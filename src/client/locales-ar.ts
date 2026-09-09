@@ -18,6 +18,7 @@
 /** The ar dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const ar: Record<string, string> = {
   files: 'الملفات',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'لا توجد عمليات ملفات في هذه الجلسة بعد',
   changesRead: 'قراءة',
   changesMdReading: 'قراءة',

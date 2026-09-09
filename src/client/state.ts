@@ -660,6 +660,37 @@ export function openTabInActivePane(state: SidebarState, tab: SidebarTab): Sideb
   }
 }
 
+/**
+ * Land a tab in the BOTTOM workbench's first pane (the bottom panel's own
+ * opens — its + menu, the auto-terminal): the plugin's right tree is no longer
+ * rendered on 0.1.5 (DSH's native sidebar is the right column), so an open
+ * that must land in the bottom dock cannot follow the active pane, which may
+ * point at the retired tree.
+ * @param state - the session state.
+ * @param tab - the tab to land.
+ * @returns the next state, with the bottom panel open.
+ */
+export function openTabInBottomPane(state: SidebarState, tab: SidebarTab): SidebarState {
+  const targetId = firstLeaf(state.bottomSplits).id
+  // Id-based safety net: if a tab with the same id exists, focus it — in a
+  // pane (activate) or in a free window (raise, no panel switch).
+  for (const leaf of allLeaves(state.splits).concat(allLeaves(state.bottomSplits))) {
+    const existing = leaf.tabs.find(candidate => candidate.id === tab.id)
+    if (existing !== undefined) return activateTab(state, leaf.id, existing.id)
+  }
+  const floated = floatWithTab(state, tab.id)
+  if (floated !== undefined) return raiseFloat(state, floated.id)
+  return {
+    ...state,
+    bottomOpen: true,
+    activePane: targetId,
+    bottomSplits: mapLeaf(state.bottomSplits, targetId, (leaf) => {
+      leaf.tabs = [...leaf.tabs, tab]
+      leaf.active = tab.id
+    }),
+  }
+}
+
 /** Move a tab from one pane to another (insert at index; -1 appends).
  *  The panes may live in DIFFERENT trees — dragging a tab between the two
  *  panels removes it from its own tree and lands it in the other one. */

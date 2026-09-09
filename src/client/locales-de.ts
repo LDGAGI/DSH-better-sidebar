@@ -3,6 +3,7 @@
  */
 export const de: Record<string, string> = {
   files: 'Dateien',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Noch keine Dateioperationen in dieser Sitzung',
   changesRead: 'Lesen',
   changesMdReading: 'Lesen',
