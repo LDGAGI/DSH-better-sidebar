@@ -63,6 +63,20 @@ function titleOf(descriptor: TabDescriptor): string {
   return typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
 }
 
+/**
+ * The chip title of a file address: its own file name. A resource tab is
+ * identified by its address, so the strip must name the FILE — the
+ * descriptor's title ("Files") would make every open file look identical.
+ * @param address - the native tab's content address.
+ * @returns the file name, or undefined when the address is not a file.
+ */
+function fileTitleOf(address: string): string | undefined {
+  const parsed = parseFileAddress(address)
+  if (parsed === undefined) return undefined
+  const segments = parsed.path.split('/').filter(segment => segment !== '')
+  return segments.length === 0 ? undefined : segments[segments.length - 1]
+}
+
 /** One descriptor's live native registrations. */
 interface Registration {
   readonly dispose: () => void
@@ -143,7 +157,9 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
         // An external implementation outranks the product's own viewers, which
         // is what lets the plugin's editor take over file addresses.
         priority: 'extension',
-        title: () => titleOf(descriptor),
+        // A resource tab is titled by the file it shows; a page tab keeps the
+        // descriptor's own title.
+        title: (address: string) => (isEditor ? fileTitleOf(address) ?? titleOf(descriptor) : titleOf(descriptor)),
         ...(descriptor.hidden === true
           ? {}
           : {

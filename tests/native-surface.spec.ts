@@ -166,12 +166,12 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     service.registerTab({ id: 'editor', title: 'Files', component: () => null })
     const records = createNativeTabRecords()
 
-    const registered: Array<{ id: string; kind: string }> = []
+    const registered: Array<{ id: string; kind: string; title: (address: string) => string }> = []
     const slotKeys: string[] = []
     // The registry is ABSENT while the slot callback fires and appears later
     // (that ordering is the regression): a holder keeps the timing honest
     // without a reassigned binding.
-    const registry: { current: { register: (definition: { id: string; kind: string }) => () => void } | undefined } = { current: undefined }
+    const registry: { current: { register: (definition: { id: string; kind: string; title: (address: string) => string }) => () => void } | undefined } = { current: undefined }
     let runInjected: (() => void) | undefined
 
     const ctx = {
@@ -200,7 +200,7 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     // …and everything registers once it appears.
     registry.current = {
       register: (definition) => {
-        registered.push({ id: definition.id, kind: definition.kind })
+        registered.push({ id: definition.id, kind: definition.kind, title: definition.title })
         return () => {}
       },
     }
@@ -209,6 +209,14 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(registered.map(entry => entry.id)).toContain('dsh-better-sidebar:files')
     expect(slotKeys).toContain('dsh-better-sidebar:terminal')
     expect(slotKeys).toContain('dsh-better-sidebar:files')
+
+    // A resource tab is titled by the FILE it shows (the descriptor's own
+    // title would make every open file look identical in the strip), while a
+    // page tab keeps the descriptor's title.
+    const editorType = registered.find(entry => entry.kind === 'editor')
+    expect(editorType?.title('dsh-resource://file/session/s1/src/main.ts')).toBe('main.ts')
+    expect(editorType?.title('dsh-resource://file/absolute/work/pkg/a/b.txt')).toBe('b.txt')
+    expect(editorType?.title('sidebar://editor')).toBe('Files')
 
     dispose()
   })
