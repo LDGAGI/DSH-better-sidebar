@@ -44,11 +44,10 @@
 - **🌐 内嵌浏览器**：多开网页 tab，后退 / 前进 / 刷新；内容运行在沙箱 iframe；外链默认按协议分流——HTTP 在侧边栏打开、HTTPS 走系统浏览器（设置页可分别调整）
 - **💻 真实终端**：xterm.js + node-pty 真实 shell，断线重连回放；可选为模型注入 `terminal_*` 工具
 - **📂 模型侧边栏打开（可选）**：全局设置开启后注入 `sidebar_open` 工具——模型可主动在侧边栏打开文件 / 文件夹（树以该目录为根）/ HTTP(S) 网页
-- **🌿 文件变动**：Git 视角（真 diff / 历史 / 暂存·提交·还原 / worktree·子仓库选择）与本轮文件视角（模型读 / 写 / 编辑实时追踪，按文件分组、按类型筛选）**双视角合一**；统一 diff 渲染（改蓝配对 + 行内字符级高亮 + 语法着色（含 mjs/cjs/mts/cts、CSS/SCSS/Less、HTML/XML/SVG/Vue、GraphQL、JSONC/JSON5）+ 上下文折叠），底部可拖拽预览面板，可一键展开为独立 diff tab（默认自由浮窗，可在设置改为面板下半 split）；`.md` 操作（读 / 写 / 编辑）预览头部可切换**阅读模式**——经共享 MarkdownText 渲染 GFM 表格 / 任务列表 / 删除线 / 脚注 / 数学公式，本地图片自动改写为 `/sidebar/file` 媒体路由；含 ```mermaid 围栏时走编辑器同款懒加载 mermaid 渲染器（图可点击缩放 / 平移）；**敏感内容脱敏**——凭据形态路径整文件遮罩、普通文件按内容形态遮值（api_key: / Bearer / sk- / AKIA / ghp_ / PEM 等，字段名保留），默认开启、预览面板一键开关（localStorage 记忆），仅影响显示、不改会话数据。已知边界：mermaid 无引号节点标签含被遮密钥时，图回退源码（规避：标签加引号）；`.html` 操作（读 / 写 / 编辑）预览头部可切换**渲染模式**——复用编辑器同款 `/sidebar/html` 路由 iframe，相对资源（./style.css、img/x.png）同路由解析，分段读取也渲染完整文档，恒定沙箱（opaque origin + CSP 头，无逃生门）；`.pdf` 操作（读 / 写 / 编辑）同样可切换**渲染模式**——复用编辑器同款 PDF 预览（媒体路由字节流 + 显式 Blob，浏览器原生查看器内嵌，附下载入口）
+- **🌿 文件变动**：Git 视角（真 diff / 历史 / 暂存·提交·还原 / worktree·子仓库选择）与本轮文件视角（模型读 / 写 / 编辑实时追踪，按文件分组、按类型筛选）**双视角合一**；统一 diff 渲染（改蓝配对 + 行内字符级高亮 + 语法着色（含 mjs/cjs/mts/cts、CSS/SCSS/Less、HTML/XML/SVG/Vue、GraphQL、JSONC/JSON5）+ 上下文折叠），底部可拖拽预览面板，可一键展开为独立 diff tab（落进工作台的 diff 分栏）；`.md` 操作（读 / 写 / 编辑）预览头部可切换**阅读模式**——经共享 MarkdownText 渲染 GFM 表格 / 任务列表 / 删除线 / 脚注 / 数学公式，本地图片自动改写为 `/sidebar/file` 媒体路由；含 ```mermaid 围栏时走编辑器同款懒加载 mermaid 渲染器（图可点击缩放 / 平移）；**敏感内容脱敏**——凭据形态路径整文件遮罩、普通文件按内容形态遮值（api_key: / Bearer / sk- / AKIA / ghp_ / PEM 等，字段名保留），默认开启、预览面板一键开关（localStorage 记忆），仅影响显示、不改会话数据。已知边界：mermaid 无引号节点标签含被遮密钥时，图回退源码（规避：标签加引号）；`.html` 操作（读 / 写 / 编辑）预览头部可切换**渲染模式**——复用编辑器同款 `/sidebar/html` 路由 iframe，相对资源（./style.css、img/x.png）同路由解析，分段读取也渲染完整文档，恒定沙箱（opaque origin + CSP 头，无逃生门）；`.pdf` 操作（读 / 写 / 编辑）同样可切换**渲染模式**——复用编辑器同款 PDF 预览（媒体路由字节流 + 显式 Blob，浏览器原生查看器内嵌，附下载入口）
 - **🧩 后台任务页**：subagent 拓扑 + 后台任务（退出码 / 实时输出 / 强制终止）
 - **💬 侧边对话(beta)**：Codex 风格的侧边线程——继承主会话完整上下文（含进行中的回合与工具调用）独立运行，不进入主会话；线程内可持续追问，一键「保存为新会话」提升为顶层会话
-- **🪟 双工作台**：右侧栏 + 底部面板；拖 Tab 拆分 / 合并分栏（可跨面板），移动端自动合并全宽抽屉
-- **🪟 自由窗口**：把标签栏的任一 tab 拖到主会话区域——成为可移动 / 缩放 / 置顶的悬浮窗口（默认 390×780），拖回侧边栏 pane 即停靠，随会话持久化；`features` 含 `'floatWindows'`，插件 tab 无差别支持
+- **🖥️ 原生右侧栏 + 底部工作台**：右列交给 DSH 0.1.5 的原生右侧栏——插件把每个 tab 类型注册成原生 tab（文件打开走 `dsh-resource://file/**`，并接管内置「文件」页 / 文件树），插件自己只保留底部工作台（分栏 / 终端 / 随会话持久化），开合按钮挂在会话头右侧
 - **📌 固定终端**：右键终端 Tab 可「固定到工作区 / 固定到全局」——固定后切换会话不消失，在 TabBar 内联呈现（跨会话虚拟 Tab，点击就地激活，PTY 按 home 会话 id+tab 直连宿主 PTY，无需切回宿主会话）；Agent 终端被 reconcile 移除时豁免保留
 - **🔁 会话隔离**：布局 / Tab / 面板按会话持久化，陈旧状态自动净化
 - **⚙️ 声明式设置**：设置页「侧边卡片」逐项独立开关，二级设置经齿轮弹窗
@@ -166,7 +165,7 @@ dsh registry enable dsh-external/dsh-better-sidebar
 | **🖥️ CodeMirror 代码编辑器**<br/><div align="center"><img width="420" alt="CodeMirror 代码编辑器" src="https://github.com/user-attachments/assets/b44b488e-568c-4ee0-b96c-e9c906598a77" /></div> | **🖼️ 图片内联预览**<br/><div align="center"><img width="420" alt="图片内联预览" src="https://github.com/user-attachments/assets/f9a58c30-5b7a-48b5-9e22-37d7e071f593" /></div> |
 | **💻 真实终端**<br/><sub>xterm.js + node-pty 真实 shell（不是模拟器）：断线重连 transcript 回放、shell / shellArgs 可配置（设置页或 `cordis.patch.yml`）、可选为模型注入 `terminal_*` 工具（agent 可直接开终端跑命令）。</sub><br/><div align="center"><img width="420" alt="真实终端" src="https://github.com/user-attachments/assets/0dad6ad3-ff3f-4b5a-86d2-f832ce65323e" /></div> | **🌿 文件变动：Git 视角 + 本轮文件**<br/><sub>双视角合一：**Git 视角**保留完整源代码管理（暂存 / 取消暂存 / 提交（`Ctrl+Enter`）/ 还原、历史、worktree 与子仓库选择）；**本轮文件视角**实时折叠会话事件日志，记录模型读 / 写 / 编辑的每个文件（按文件分组、按类型筛选、操作数角标）。点击任意改动在底部**可拖拽预览面板**查看统一 diff——删红 / 增绿 / 改蓝配对 + 行内字符级高亮 + 语法着色 + 上下文折叠——也可一键展开为 VSCode 式独立 diff tab（同一渲染栈）。</sub><br/><div align="center"><img width="420" alt="文件变动" src="https://github.com/user-attachments/assets/e7fc1220-305f-4bca-8583-e77ab4f4fa78" /></div> |
 | **🌐 内嵌浏览器**<br/><sub>多开网页 tab：后退 / 前进 / 刷新 / 地址栏；内容运行在**不透明源沙箱 iframe**（界面实时显示沙箱状态，可按页面临时解锁）；聊天里的外链点击可被接管到侧边栏打开（按协议分流，可配）。</sub><br/><div align="center"><img width="420" alt="内嵌浏览器" src="https://github.com/user-attachments/assets/9bc6b65a-64fc-4942-a685-76e391e55606" /></div> | **🧩 任务页：子代理拓扑 + 后台任务**<br/><sub>子代理树实时拓扑（运行状态、批量实时预览）+ 后台任务清单（退出码 / 实时输出 / 强制终止）；新子代理 / 新任务可自动激活任务页，宽屏同时展开侧边栏，窄屏不强制展开全屏抽屉（可关）。</sub><br/><div align="center"><img width="420" alt="任务页：子代理拓扑" src="https://github.com/user-attachments/assets/dcd8ed2f-59fa-405b-937b-2d250f5034dd" /></div> |
-| **💬 侧边对话(beta)**<br/><sub>Codex 风格侧边线程：**每个对话一个独立 Tab**；线程继承主会话完整上下文（含进行中回合，以 interrupted 诚实冻结）独立运行，不污染主会话；可持续追问、重启冷恢复；一键「保存为新会话」提升为顶层会话。</sub><br/><div align="center"><img width="420" alt="侧边对话(beta)" src="https://github.com/user-attachments/assets/3a338c36-f5de-4000-95f3-4b1cd04f60fc" /></div> | **🪟 双工作台：右侧栏 + 底部面板 + 分栏**<br/><sub>右侧栏与底部面板可同时展开；拖 Tab 到分栏边缘**拆分**、拖到中间**合并**（可跨面板）；面板宽高左缘/上缘拖拽调节；移动端自动合并为全宽抽屉；把 tab 拖到主会话区域可变为**自由窗口**（悬浮 / 缩放 / 置顶，拖回 pane 停靠）。</sub><br/><div align="center"><img width="420" alt="双工作台（右侧栏 + 底部面板）" src="https://github.com/user-attachments/assets/dfdb875e-a1a8-4d4b-8340-353736b1708f" /></div> |
+| **💬 侧边对话(beta)**<br/><sub>Codex 风格侧边线程：**每个对话一个独立 Tab**；线程继承主会话完整上下文（含进行中回合，以 interrupted 诚实冻结）独立运行，不污染主会话；可持续追问、重启冷恢复；一键「保存为新会话」提升为顶层会话。</sub><br/><div align="center"><img width="420" alt="侧边对话(beta)" src="https://github.com/user-attachments/assets/3a338c36-f5de-4000-95f3-4b1cd04f60fc" /></div> | **🖥️ DSH 原生右侧栏 + 插件底部工作台**<br/><sub>右列是 DSH 自己的右侧栏：插件把每个 tab 类型注册成原生 tab（含接管内置「文件」页与文件预览），聊天里的文件点击直接落到原生栏；插件自有底部面板可与其同时展开，拖 Tab 到分栏边缘**拆分**、拖到中间**合并**，高度拖上缘调节；开合按钮在会话头右侧。</sub><br/><div align="center"><img width="420" alt="双工作台（右侧栏 + 底部面板）" src="https://github.com/user-attachments/assets/dfdb875e-a1a8-4d4b-8340-353736b1708f" /></div> |
 | **⚙️ 声明式设置**<br/><sub>设置页「侧边卡片」分区：每个 tab / 预览器一张小卡片，独立开关（高亮启用态 + 品牌开关滑块）；二级设置经卡片底部「功能设置」条弹窗（开关 / 文本 / 数字 / 下拉）；插件自有设置持久化在 `pluginSettings`。</sub><br/><div align="center"><img width="420" alt="声明式设置：侧边卡片" src="https://github.com/user-attachments/assets/0800ca64-621e-48da-b7df-aecfddc3ec29" /></div> | **📱 移动端**<br/><sub>窄屏（<768px）自动切换为全宽抽屉：底栏 tab 一次性并入右侧栏，触屏拖拽可调。</sub><br/><div align="center"><img width="360" alt="移动端全宽抽屉" src="https://github.com/user-attachments/assets/a82ba78a-f4cf-4d85-80e8-050a05beb144" /></div> |
 
 ## 🌐 插件生态
@@ -263,6 +262,24 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 **支持的 DSH 版本**：<a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="支持的 DSH 版本（v0.18.1 正式版）：0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a> · 完整发布历史见 [Releases](https://github.com/omdsh-dev/DSH-better-sidebar/releases)
 
+### v0.19.0-alpha.0
+
+> 🧪 **alpha 通道**（npm dist-tag `alpha`，安装 `dsh-better-sidebar@alpha`）：本版仅支持 **DSH 0.1.5-alpha.1+**（peer 下限 `^0.1.5-alpha.1`，CI 钉 `@deepseek-ai/dsh@0.1.5-alpha.1`）。0.1.2-rc.1 稳定线请继续用 **v0.18.1**（npm `latest`）。
+
+**✨ 新功能**
+
+- 🖥️ **接入 DSH 原生右侧栏**（#604）：右列改为 DSH 自己的右侧栏——插件的 7 个 tab 类型全部注册成原生 tab 类型 + 原生 tab 体；聊天里的文件打开统一走 `ctx.sidebarRight.openResource(dsh-resource://file/…)`；`editor` 类型以 `extension` 优先级认领文件资源（压过内置文本预览）并接管内置「文件」页 kind（注销即复位）；跨会话打开在目标会话未上屏时排队重放。
+- 🧩 **退役插件自绘右侧面板与自由窗口**：右列归 DSH 后，插件只保留底部工作台（单分栏树、随会话持久化），开合按钮注册进 DSH 会话头 utilities 槽；浮窗 API（`floats` / `floatTab` / `dockFloat` / `raiseFloat` / 右键「移动到自由窗口」）、`features` 里的 `'floatWindows'`，以及 `openByDefault` / `defaultWidthPercent` / `changesDiffFloat` 三个设置项一并删除（旧持久化文档里的 `floats` 字段被忽略，不影响加载）。
+- 🔗 **适配 DSH 0.1.5 宿主契约**（#603）：`assistant/chunk` 事件删除 → 实时增量改由 `agent/assistant-stream` 帧折叠（侧边对话转录的 `live` 字段）；`sessionPersistence.inspect` 删除 → 冷会话读取改走 `open(id,'read')`；会话头 `version` 用 `SESSION_FORMAT_VERSION`。
+
+**🐛 修复**
+
+- 侧边对话转录 / `jobs.output` 回放 / fork 继承等 8 处会话事件读取跟随 0.1.5 契约；自定义种子补齐 fork 标记对，避免继承父会话未领取的 inbox 输入。
+
+**🧰 CI 与内部**
+
+- 真机挂载冒烟门禁钉 0.1.5-alpha.1，e2e 增加「展开原生栏 → 经引导页逐个打开插件 tab 类型」的巡检；typecheck / lint / 单测 / 挂载车道全绿。
+
 ### v0.18.1
 
 > 📌 **正式版**（npm `latest`）：DSH 基线不变（**0.1.2-rc.1+**，peer 下限 `^0.1.2-rc.1`）——本版是 v0.18.0 之后的增量发布：变更面板预览能力增强、文件树可写，以及五项修复。
@@ -316,9 +333,9 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 <details>
 <summary><b>历史版本（v0.12.0 – v0.15.2）</b></summary>
 
-### v0.19.0-alpha.0
+### v0.19.0-alpha.0（0.1.2-alpha.5 适配，未发布，内容并入 v0.18.0）
 
-> 🧪 **alpha 通道**：本版仅支持 **DSH 0.1.2-alpha.x**（peer 下限 `^0.1.2-alpha.5`，npm dist-tag `alpha`，安装 `dsh-better-sidebar@alpha`）。该版本号未单独发布，内容已并入 **v0.18.0** 正式版。
+> 🧪 **alpha 通道**：本版仅支持 **DSH 0.1.2-alpha.x**（peer 下限 `^0.1.2-alpha.5`，npm dist-tag `alpha`）。该版本号当时未单独发布，内容已并入 **v0.18.0** 正式版；v0.19.0-alpha.0 这个号后来被 0.1.5 适配线复用（见上）。
 
 - 🔗 **适配 DSH 0.1.2-alpha.5（npm 已发布，`alpha` dist-tag）**：CI 挂载门禁钉版、`dsh.plugin.json` engines 下限与 `@deepseek-ai/*` peer / devDependencies 基线升至 0.1.2-alpha.5（真机挂载冒烟 14/14 验证）。`dsh-client-locale` 上游停在 0.1.2-alpha.3 未发新版，其 peer 下限 / devDep 保持并天然兼容 alpha.5 运行时（`pnpm peers check` 零失配，无需新增提升传递 peer）。代码适配了 alpha.4 的兼容性标记改动——`Session.events` 属性移除，迁移到按需读 API `snapshotEvents()`（sidechat 转录 live 读、fork 继承、`jobs.output` 回放、subagent 活跃度共 8 处），新建线程 meta 中宿主已删的 `seedLength` 一并移除；alpha.4 其余变化（双向 `send_message`、自定义模型发现复用 Profile 请求头、`SessionSeq`/`SessionLogOffset` 强类型）与 alpha.5（升级启动修复）经核实不触及本插件其余表面。
 
@@ -526,7 +543,7 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 从 v0.4.0 起暴露 `ctx.betterSidebar` 服务，其他插件可注册侧边栏页面与文件预览器（内置 8 tab + 6 viewer 亦通过同一服务注册）。v0.12.1 补齐基座能力（完整类型导出、能力探测、状态订阅、tab 角标、生命周期回调、定向打开、插件自有设置等）。
 
-完整接入文档（全字段、匹配算法、HMR 陷阱、声明式设置、版本探测、自由窗口与皮肤契约）：**[`docs/external-plugin-guide.md`](./docs/external-plugin-guide.md)**；仓库开发规则（硬约束 / CI / 发版）见 [`AGENTS.md`](./AGENTS.md)。
+完整接入文档（全字段、匹配算法、HMR 陷阱、声明式设置、版本探测、原生栏承载面与皮肤契约）：**[`docs/external-plugin-guide.md`](./docs/external-plugin-guide.md)**；仓库开发规则（硬约束 / CI / 发版）见 [`AGENTS.md`](./AGENTS.md)。
 
 ### ➕ 添加插件（推荐插件目录）
 

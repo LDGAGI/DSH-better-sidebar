@@ -90,9 +90,9 @@ describe('SideCardSection declarative inventory', () => {
     expect(html).toContain('>explorer<')
     expect(html).toContain('data-icon="subagent"')
     expect(html).toContain('>Subagents<')
-    // Default prefs: no general switch is on (openByDefault and agentOpenTools
-    // both default off), and both tabs + the image viewer cards pressed
-    // (3 aria-pressed cards).
+    // Default prefs: the general switch is off (agentOpenTools defaults off),
+    // and both tabs + the image viewer cards are pressed (3 aria-pressed
+    // cards).
     // The nested auto-open toggle is NOT an inline card (it lives in the popup).
     expect(pressedCount(html, 'true')).toBe(3)
     expect(pressedCount(html, 'false')).toBe(0)
@@ -178,9 +178,9 @@ describe('SideCardSection declarative inventory', () => {
     expect(html).toContain('Pick the title-bar compatibility scheme: auto-detect (default, conservative) / DSH official web / known desktop shells / custom (shift distance + custom CSS)')
     expect(html).not.toContain('<select')
     expect(html).toContain('>Auto-detect<')
-    // Two general-row switches remain (openByDefault + agentOpenTools), neither
-    // on by default — the scheme row is a dropdown, not a switch.
-    expect(html.match(/type="checkbox"/g)?.length).toBe(2)
+    // One general-row switch remains (agentOpenTools), off by default — the
+    // scheme row is a dropdown, not a switch.
+    expect(html.match(/type="checkbox"/g)?.length).toBe(1)
     expect(html.match(/checked=""/g)?.length ?? 0).toBe(0)
     // Auto (default) needs no further settings → no gear.
     expect(html).not.toContain('Position compatibility mode Feature settings')
@@ -319,10 +319,10 @@ describe('mergePluginSetting (v0.12.0, codex review fix)', () => {
 
 describe('FeatureSettingsRows valueSource (v0.12.0, independent CR fix)', () => {
   it('plugin rows read from their OWN value source — a plugin key colliding with a host pref never reads the host value', () => {
-    const prefs = { ...SIDEBAR_PREFS_DEFAULTS, openByDefault: true }
-    const toggle = { key: 'openByDefault', title: 'My flag' }
+    const prefs = { ...SIDEBAR_PREFS_DEFAULTS, agentOpenTools: true }
+    const toggle = { key: 'agentOpenTools', title: 'My flag' }
     // valueOf returns undefined (the plugin never wrote this key): the row
-    // must render UNCHECKED even though the host pref openByDefault is true.
+    // must render UNCHECKED even though the host pref agentOpenTools is true.
     let html = renderToString(createElement(FeatureSettingsRows, {
       toggles: [toggle],
       prefs,

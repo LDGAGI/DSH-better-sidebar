@@ -992,8 +992,6 @@ describe('side card settings routes', () => {
     expect(read.ok).toBe(true)
     expect(read.value).toEqual({
       value: {
-        openByDefault: false,
-        defaultWidthPercent: 35,
         autoOpenSubagent: true,
         autoOpenJobs: true,
         agentTerminalTools: false, agentOpenTools: false,
@@ -1013,7 +1011,6 @@ describe('side card settings routes', () => {
         browserInterceptHttp: true,
         browserInterceptHttps: false,
         browserAllowedLoopback: '',
-        changesDiffFloat: true,
         // The enable-switch maps default to {} (everything on).
         tabsEnabled: {},
         viewersEnabled: {},
@@ -1024,11 +1021,11 @@ describe('side card settings routes', () => {
       externalDisable: false,
     })
 
-    const written = await invoke(route, 'settings.update', { patch: { openByDefault: true } })
+    const written = await invoke(route, 'settings.update', { patch: { agentOpenTools: true } })
     expect(written.ok).toBe(true)
-    const view = written.value as { value: { openByDefault: boolean; defaultWidthPercent: number }; revision: number }
-    expect(view.value.openByDefault).toBe(true)
-    expect(view.value.defaultWidthPercent).toBe(35)
+    const view = written.value as { value: { agentOpenTools: boolean; terminalFontSize: number }; revision: number }
+    expect(view.value.agentOpenTools).toBe(true)
+    expect(view.value.terminalFontSize).toBe(13)
     expect(view.revision).toBe(1)
   })
 
@@ -1062,10 +1059,10 @@ describe('side card settings routes', () => {
 
   it('refuses a stale write with settings-conflict (409)', async () => {
     const route = mountWithSettings(createFakeSettings())
-    await invoke(route, 'settings.update', { patch: { openByDefault: false } })
+    await invoke(route, 'settings.update', { patch: { agentOpenTools: false } })
     // The second write carries the pre-write revision: the seam refuses it.
     const stale = await invoke(route, 'settings.update', {
-      patch: { defaultWidthPercent: 40 },
+      patch: { terminalFontSize: 15 },
       expectedRevision: 0,
     })
     expect(stale.ok).toBe(false)

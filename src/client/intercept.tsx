@@ -8,7 +8,7 @@
  */
 import { IconCodeOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
-import { firstLeaf, revealPaths, togglePanel, type SidebarStore } from './state.ts'
+import { revealPaths, type SidebarStore } from './state.ts'
 import { t } from './locales.ts'
 import { resolveSidebarPath, selectProducedFiles } from './produced-files.ts'
 import css from './sidebar.module.css'
@@ -26,9 +26,8 @@ export function openSidebarFile(ctx: Context, store: SidebarStore, sessionId: st
 
 /**
  * Reveal the produced files in the sidebar explorer: expand their parent
- * directories, highlight the rows, and focus the explorer tab (expanding the
- * hosting panel when it is collapsed). Unknown files fall back to revealing
- * the workspace root itself.
+ * directories, highlight the rows, and focus the explorer tab. Unknown
+ * files fall back to revealing the workspace root itself.
  */
 export function revealInExplorer(
   ctx: Context,
@@ -45,15 +44,6 @@ export function revealInExplorer(
     ? files.map(path => resolveSidebarPath(cwd, path))
     : cwd === undefined ? [] : [cwd]
   store.reduce(state => revealPaths(state, cwd, targets))
-  // A type-only open never auto-expands the panel (only content opens do,
-  // see service.openTab) — so a reveal opens the panel itself when it is
-  // collapsed, exactly like the subagent auto-open flows, or the highlight
-  // would be set on an invisible panel.
-  store.reduce(s => (s.panelOpen ? s : togglePanel(s)))
-  // Pin the landing to the right panel: the files window must appear where
-  // the panel just expanded, not in a bottom-panel pane the user last
-  // touched.
-  store.reduce(s => ({ ...s, activePane: firstLeaf(s.splits).id }))
   // Focus the single-instance editor home tab (the files window) where the
   // reveal highlight renders. Read via ctx.get like every other internal
   // consumer (#357): the provider is not on this fiber chain, so a direct

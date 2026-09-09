@@ -14,7 +14,8 @@
  *      for everything sidebar-shaped the page fetched;
  *   4. bottom-drag frames — rAF frame-interval p95/max while dragging the
  *      bottom strip (the layout-push hot path), plus the width-leak guard
- *      from the drag lane (a closed right panel must push 0).
+ *      from the drag lane (this shell pushes no width at all: the right
+ *      column belongs to DSH's native Sidebar).
  *
  * Results print as single-line `PERF_JSON` records (plus a `PERF_SUMMARY`
  * aggregate) so a shell run can `tee` the log and grep them out; the
@@ -186,10 +187,16 @@ test('measure: bottom-strip drag frame pacing', async ({ page }) => {
   await expect(sidebar).toBeAttached({ timeout: 90_000 })
   await dismissOnboarding(page)
 
-  // The right panel stays CLOSED on purpose: the bottom drag must not push
-  // the host layout in that pose (the width-leak regression the drag lane
-  // locks; recorded here as a number-adjacent guard for the perf story).
-  const bottomExpand = sidebar.getByRole('button', { name: 'Expand bottom panel' })
+  // The workbench's expand/collapse control is registered into DSH's
+  // session-header utilities, which DSH renders only for a session with
+  // content — seed one message first, then address the toggle by its stable
+  // data attribute (it is NOT inside the plugin's own host).
+  await sendFirstMessage(page)
+
+  // The plugin pushes no width ever (the right column is DSH's native
+  // Sidebar), so the drag must never write --dsh-sidebar-width — the guard
+  // the drag lane locks, recorded here for the perf story.
+  const bottomExpand = page.locator('[data-dsh-bottom-toggle]')
   await expect(bottomExpand).toHaveCount(1)
   await bottomExpand.click()
   await expect
@@ -273,5 +280,5 @@ test('measure: bottom-strip drag frame pacing', async ({ page }) => {
     `PERF_SUMMARY drag-frames=${record.frames} p50=${record.intervalMedianMs}ms p95=${record.intervalP95Ms}ms `
     + `max=${record.intervalMaxMs}ms widthLeak=${record.pushWidthLeakMax}px`,
   )
-  expect(record.pushWidthLeakMax, 'the closed right panel must push 0 width during the bottom drag').toBe(0)
+  expect(record.pushWidthLeakMax, 'the plugin must never push a width during the bottom drag').toBe(0)
 })

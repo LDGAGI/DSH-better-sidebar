@@ -1,7 +1,7 @@
 # dsh-better-sidebar 仓库规则（AGENTS）
 
 > 本文只含**项目全局开发规则**（面向贡献者与 agent）。
-> 消费插件接入 API 全参考（`ctx.betterSidebar` 服务、TabDescriptor / FileViewerDescriptor 全字段、声明式设置、自由窗口、皮肤契约等）→ [docs/external-plugin-guide.md](docs/external-plugin-guide.md)；逐特性设计史（含实施偏差记录）→ [docs/plans/](docs/plans/)。
+> 消费插件接入 API 全参考（`ctx.betterSidebar` 服务、TabDescriptor / FileViewerDescriptor 全字段、声明式设置、原生右侧栏承载面、皮肤契约等）→ [docs/external-plugin-guide.md](docs/external-plugin-guide.md)；逐特性设计史（含实施偏差记录）→ [docs/plans/](docs/plans/)。
 
 ---
 
@@ -67,6 +67,6 @@
 
 ## 6. 文档与测试地图
 
-- **接入 API 全参考**：[docs/external-plugin-guide.md](docs/external-plugin-guide.md)（消费插件开发者向；§4 Tab API / §5 FileViewer API / §7 服务方法 / §10 平台陷阱 / §11 自由窗口 / §12 皮肤契约 / §15 真实案例）。
+- **接入 API 全参考**：[docs/external-plugin-guide.md](docs/external-plugin-guide.md)（消费插件开发者向；§0 原生栏承载面 / §4 Tab API / §5 FileViewer API / §7 服务方法 / §10 平台陷阱 / §11 已移除的自由窗口 / §12 皮肤契约 / §15 真实案例）。
 - **设计文档**：[docs/plans/](docs/plans/)（30+ 份逐特性设计，含实施偏差记录）。
-- **关键测试守护**：`tests/service.spec.ts` / `builtins.spec.ts`（注册表与内置清单：7 tab + 6 viewer）/ `market-manifest.spec.ts`（市场约束）/ `e2e-host-protocol.spec.ts`（RPC 双协议）/ `free-window.spec.tsx`（自由窗口）/ `theme.spec.ts`（皮肤契约）/ `plugin-list.spec.ts`（推荐插件目录）/ `fs-search.spec.ts`（host 文件名搜索）。
+- **关键测试守护**：`tests/service.spec.ts` / `builtins.spec.ts`（注册表与内置清单：7 tab + 6 viewer）/ `market-manifest.spec.ts`（市场约束）/ `e2e-host-protocol.spec.ts`（RPC 双协议）/ `native-surface.spec.ts`（原生右侧栏承载面）/ `theme.spec.ts`（皮肤契约）/ `plugin-list.spec.ts`（推荐插件目录）/ `fs-search.spec.ts`（host 文件名搜索）。

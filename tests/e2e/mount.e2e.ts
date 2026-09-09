@@ -13,8 +13,8 @@
  *     plugin's `[data-dsh-better-sidebar]` host mount;
  *  3. asserts the plugin's crash markers never appear (no RenderBoundary /
  *     fail() strips, no `pageerror`, no plugin-prefixed console errors);
- *  4. expands the collapsed panel (openByDefault defaults off), sweeps every
- *     built-in tab (Files / Changes / Tasks / Terminal / Browser) —
+ *  4. expands DSH's native right Sidebar, sweeps every built-in tab type
+ *     through its guide page (Files / Changes / Tasks / Terminal / Browser) —
  *     including the lazily-fetched terminal chunk — and then opens seeded
  *     files through the Files window's tree (separate mode: each file opens
  *     its own new tab, the seeded home "Files" tab stays the explorer),
@@ -211,7 +211,7 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
   }
 
   // The seeded session must give the sidebar a session scope: without it the
-  // shell renders a disabled toggle cluster and the tab sweep is impossible.
+  // workbench has no pane to render and the tab sweep is impossible.
   const tabBar = sidebar.locator('[title]')
   await expect(tabBar.first()).toBeAttached({ timeout: 90_000 })
 
@@ -256,6 +256,13 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
   // which DSH renders only for a session with content — the seeded session
   // starts blank, so give it one message first.
   await sendFirstMessage(page)
+
+  // The plugin's own surface is the bottom workbench: its expand/collapse
+  // control is registered into DSH's session-header utilities (the header's
+  // corner belongs to the native sidebar), and the workbench host itself is
+  // mounted. Both are stable addressing surfaces for user CSS / presets.
+  await expect(page.locator('[data-dsh-bottom-toggle]')).toBeAttached({ timeout: 30_000 })
+  await expect(page.locator('[data-dsh-bottom-panel]')).toBeAttached()
 
   // DSH 0.1.5 owns the right column: the plugin contributes tab TYPES to the
   // host's native right Sidebar instead of drawing its own panel. Open it
@@ -485,10 +492,10 @@ test('conservative auto: URL stamps alone never modify the layout; plugin chrome
     .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--dsh-title-bar-strip')))
     .toBe('')
   // The stable addressing surface for presets / custom CSS is mounted: the
-  // plugin's own host plus its bottom workbench (the right column belongs to
-  // DSH's native Sidebar on 0.1.5).
-  await expect(page.locator('[data-dsh-toggle-cluster]')).toBeAttached()
-  await expect(page.locator('[data-dsh-bottom-panel]')).toBeAttached()
+  // plugin's own host (its bottom workbench and the header toggle live in
+  // DSH's session header, which this stamp-only page has no session for —
+  // the native-surface sweep asserts those once a session exists).
+  await expect(page.locator('[data-dsh-panel-host]')).toBeAttached()
   // The plugin's interactive chrome opts out of Electron drag regions
   // (issues #103/#111) — inert in plain browsers, present in the bundle
   // (the bundler minifies the property's whitespace, so match loosely).
