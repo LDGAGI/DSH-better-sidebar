@@ -17,13 +17,6 @@
 /** The vi dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const vi: Record<string, string> = {
   files: 'Tệp',
-  nativeGuideDesc: 'Open in the DSH sidebar',
-  guideDescFiles: 'Duyệt cây tệp của workspace; bấm để xem trước hoặc chỉnh sửa',
-  guideDescGit: 'Thay đổi Git và thay đổi tệp của phiên này trong một tab',
-  guideDescSubagent: 'Sơ đồ subagent và tác vụ nền, theo thời gian thực',
-  guideDescSidechat: 'Luồng hỏi tiếp độc lập kế thừa ngữ cảnh của phiên này',
-  guideDescTerminal: 'Shell thật (xterm + pty), tự kết nối lại',
-  guideDescBrowser: 'Trình duyệt nhúng, có thể mở link trong chat',
   changesSessionEmpty: 'Chưa có thao tác tệp nào trong phiên này',
   changesRead: 'Đọc',
   changesMdReading: 'Đọc',

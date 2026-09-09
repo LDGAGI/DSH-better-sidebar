@@ -44,20 +44,22 @@ describe('built-in tab registrations', () => {
     expect(changes?.component).toBeDefined()
   })
 
-  it('every visible tab declares a real guide line (no generic fallback)', () => {
-    // The native new-tab list renders `description()` under the title; a tab
-    // without one reads the same generic sentence as every other plugin page.
+  it('every visible tab declares a non-empty, mutually distinct title', () => {
+    // The native new-tab list (guide page) is an icon+title capsule at DSH
+    // 0.1.5-alpha.2 — the `description` field is gone from the host contract.
+    // The title is therefore the only per-tab guide text: it must exist, and
+    // no two visible tabs may share one (identical capsules would be
+    // indistinguishable in the guide and the tab strip).
     const { service } = setup()
     const visible = service.getTabs().filter(descriptor => descriptor.hidden !== true)
     expect(visible.length).toBeGreaterThan(0)
     for (const descriptor of visible) {
-      expect(descriptor.description, `${descriptor.id} must declare a description`).toBeDefined()
-      const line = typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description
-      expect(line, `${descriptor.id} description must be non-empty`).toBeTruthy()
+      const title = typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
+      expect(title, `${descriptor.id} must declare a title`).toBeTruthy()
     }
-    const lines = visible.map(descriptor =>
-      typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description)
-    expect(new Set(lines).size, 'descriptions must differ per tab').toBe(visible.length)
+    const titles = visible.map(descriptor =>
+      typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title)
+    expect(new Set(titles).size, 'titles must differ per tab').toBe(visible.length)
   })
 
   it('the changes tab declares no settings of its own (the diff always docks)', () => {

@@ -262,6 +262,24 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 **支持的 DSH 版本**：<a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="支持的 DSH 版本（v0.18.1 正式版）：0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a> · 完整发布历史见 [Releases](https://github.com/omdsh-dev/DSH-better-sidebar/releases)
 
+### v0.19.0-alpha.1
+
+> 🧪 **alpha 通道**（npm dist-tag `alpha`，安装 `dsh-better-sidebar@alpha`）：本版仅支持 **DSH 0.1.5-alpha.2+**（peer 下限 `^0.1.5-alpha.2`，CI 钉 `@deepseek-ai/dsh@0.1.5-alpha.2`）。0.1.5-alpha.1 请继续用 **v0.19.0-alpha.0**；0.1.2-rc.1 稳定线用 **v0.18.1**（npm `latest`）。
+
+**✨ 新功能**
+
+- 🪟 **每个 tab 体都填满面板**（#609）：原生右侧栏的 tab 体宿主是「有确定高度的块级滚动容器」而非 flex 容器，此前插件各 tab 的根只写 `flex: 1`，在块容器里塌成内容高度——侧边对话的输入框因此贴不到面板底（转录一长就被推出可视区）。现在 native 适配层统一给每个 tab 体包一层 `height: 100%` 的列 flex 宿主，插件全部 tab（含第三方 `registerTab` 注册的 descriptor）恢复与底部工作台一致的填满语义。
+
+**🐛 修复**
+
+- 🧭 **跟随 DSH 0.1.5-alpha.2 的文件地址语法**：`fileAddressFor` 一律产出 session 作用域地址、绝对路径保留前导 `/`；`parseFileAddress` 改为前缀解析并忽略 `?`/`#` 后缀。
+- 🪟 **底部工作台的中心列定位跟随 alpha.2 全局面板改动**：`conversation` 槽改为根级 `main` keyed 槽下的 `main.conversation`，定位器改认新 key 并跳过 `display: contents` 槽宿主（alpha.1 的旧 key 仍兼容）。
+
+**🧰 CI 与内部**
+
+- 基线推进到 DSH 0.1.5-alpha.2（#609）：peer 下限、22 个 devDependency 钉版、CI 挂载车道与 `dsh.plugin.json` engines 同步；`pnpm peers check` 干净（按 §3-9 补提 `dsh-session-persistence` 传递 peer）。
+- **移除 `TabDescriptor.description`**：alpha.2 的原生指南条目不再渲染第二行（改为「图标+标题」胶囊），该字段与 6 个 `guideDesc*` 词条（20 份词典）一并下线；新建标签页的默认页改由注册表选（恰好 1 个指南条目则直接打开它）。
+
 ### v0.19.0-alpha.0
 
 > 🧪 **alpha 通道**（npm dist-tag `alpha`，安装 `dsh-better-sidebar@alpha`）：本版仅支持 **DSH 0.1.5-alpha.1+**（peer 下限 `^0.1.5-alpha.1`，CI 钉 `@deepseek-ai/dsh@0.1.5-alpha.1`）。0.1.2-rc.1 稳定线请继续用 **v0.18.1**（npm `latest`）。

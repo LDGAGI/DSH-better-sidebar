@@ -43,7 +43,7 @@ interface NativeTabRegistry {
     priority?: 'extension' | 'builtin' | 'fallback'
     canOpen?: (address: string) => boolean
     title: (address: string) => string
-    guide?: readonly { order: number; title: () => string; description: () => string; icon?: unknown }[]
+    guide?: readonly { order: number; title: () => string; icon?: unknown }[]
   }): () => void
 }
 
@@ -61,17 +61,6 @@ function nativeId(descriptorId: string): string {
 /** The descriptor's title text, evaluated fresh for the current locale. */
 function titleOf(descriptor: TabDescriptor): string {
   return typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
-}
-
-/**
- * The descriptor's guide line, evaluated fresh for the current locale. The
- * host's new-tab list renders one line per entry; without a declared
- * description every plugin page would read the same generic sentence.
- */
-function descriptionOf(descriptor: TabDescriptor | undefined): string {
-  const description = descriptor?.description
-  if (description === undefined) return t('nativeGuideDesc')
-  return typeof description === 'function' ? description() : description
 }
 
 /**
@@ -192,7 +181,6 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
             guide: [{
               order: descriptor.order ?? 100,
               title: () => titleOf(descriptor),
-              description: () => descriptionOf(descriptor),
               ...guideIconOf(icon),
             }],
           }),
@@ -219,7 +207,6 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
         guide: [{
           order: 10,
           title: () => t('files'),
-          description: () => descriptionOf(editor),
           // The takeover IS the editor descriptor's page, so it carries the
           // editor's glyph: without it the "Files" row is the only guide
           // entry with an empty icon slot.
