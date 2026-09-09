@@ -118,3 +118,27 @@ needle 出现 / 超时 / 终端退出。等待期间用户在侧边栏看不到�
 - 不新增独立 waits WebSocket（方案 B 否决）；
 - 不改 `ctx.betterSidebar` 服务面（`external-plugin-guide.md` 无需同步）；
 - 不做乐观 UI（banner 消失以服务端推送为准）。
+
+## 实施偏差记录
+
+- **⏳ tab 徽章不走 `TabDescriptor.badge`**：实现时核实该 API 是 type-keyed
+  （`badge(ctx, scope, state)`，无 tab 参数、external 插件共享），无法定位单个
+  tab。改为 Sidebar 壳层 `tabBadgeOf` 的 sidebar-internal 特例（agent: 前缀判断
+  + `state.agentWaits` 查表），`service.ts` 与 external-plugin-guide.md 零改动。
+- **banner 抽为独立组件 `TerminalWaitBanner.tsx`**：设计原文写在 TerminalView
+  内；抽出后无 xterm 依赖，jsdom 单测可直接渲染（TerminalView 仍负责订阅 store
+  并把 onSkip 接到 `api.agentSkipWait`）。
+- **词典同步扩到全部 21 个语言文件**：设计只写了 zh/en/ja，但
+  `tests/locales.spec.ts` 断言每个第三方词典与 zh 键集相等——只同步三语会让该
+  守护测试挂掉。按仓库惯例（全语言同步，如 e8761ee）补齐其余 18 语言同两键。
+- **banner 配色**：仓库 CSS 无 state-info 令牌，沿用 `.terminalBanner` 的 warn
+  对（`--dsw-alias-state-warn-label/-tertiary`），符合皮肤契约。
+- **设计文档与计划随 feat 分支进 PR**：main 受分支保护，纯文档直推被 hook 拒绝
+  （`4a6a77a` / `2448068` 随本分支合并）。
+- **测试断言以文本计数取代 CSS 类名**：CSS module 类名在测试变换下不稳定，
+  ⏳ 数量断言改从 `textContent` 计数；长 needle 截断断言改为计量 needle 自身
+  贡献字符数（本地化句子包裹 needle，整体长度断言与语言相关，原计划内部矛盾）。
+- **新测试的 localStorage 兜底**：Node 26 + jsdom 29 组合下测试环境可能无全局
+  `localStorage`（上游 `bottom-auto-terminal.spec.tsx` 在同环境即失败，属已知
+  win32/环境非回归类）；新 spec 的 afterEach 加 `typeof localStorage` 守卫，
+  上游测试一律未动。
