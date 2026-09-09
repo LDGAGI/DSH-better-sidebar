@@ -13,6 +13,7 @@
 
 export const ru: Record<string, string> = {
   files: 'Файлы',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'В этой сессии пока нет файловых операций',
   changesRead: 'Чтение',
   changesMdReading: 'Чтение',

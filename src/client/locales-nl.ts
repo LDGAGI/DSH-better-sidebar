@@ -15,6 +15,7 @@
  */
 export const nl: Record<string, string> = {
   files: 'Bestanden',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Nog geen bestandsbewerkingen in deze sessie',
   changesRead: 'Lezen',
   changesMdReading: 'Lezen',

@@ -17,6 +17,7 @@
 /** The vi dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const vi: Record<string, string> = {
   files: 'Tệp',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Chưa có thao tác tệp nào trong phiên này',
   changesRead: 'Đọc',
   changesMdReading: 'Đọc',

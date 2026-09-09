@@ -19,6 +19,7 @@
 /** The pl dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const pl: Record<string, string> = {
   files: 'Pliki',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Brak operacji na plikach w tej sesji',
   changesRead: 'Odczyt',
   changesMdReading: 'Czytanie',

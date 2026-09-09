@@ -1,5 +1,6 @@
 export const sv: Record<string, string> = {
   files: 'Filer',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Inga filoperationer i den här sessionen ännu',
   changesRead: 'Läs',
   changesMdReading: 'Läsning',

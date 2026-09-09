@@ -17,6 +17,7 @@
 /** The ja dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const ja: Record<string, string> = {
   files: 'ファイル',
+  nativeGuideDesc: 'DSH のサイドバーで開く',
   changesSessionEmpty: 'このセッションにはファイル操作がまだありません',
   changesRead: '読み取り',
   changesMdReading: '閲覧',

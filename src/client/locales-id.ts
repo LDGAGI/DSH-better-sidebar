@@ -15,6 +15,7 @@
 
 export const id: Record<string, string> = {
   files: 'Berkas',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: 'Belum ada operasi file di sesi ini',
   changesRead: 'Baca',
   changesMdReading: 'Baca',

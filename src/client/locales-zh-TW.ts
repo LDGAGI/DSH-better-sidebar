@@ -32,6 +32,7 @@
 /** The zh-HK dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const zhTW: Record<string, string> = {
   files: '檔案',
+  nativeGuideDesc: 'Open in the DSH sidebar',
   changesSessionEmpty: '本作業階段還沒有檔案操作',
   changesRead: '讀取',
   changesMdReading: '閱讀',
