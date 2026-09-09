@@ -160,7 +160,11 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
         // A resource tab is titled by the file it shows; a page tab keeps the
         // descriptor's own title.
         title: (address: string) => (isEditor ? fileTitleOf(address) ?? titleOf(descriptor) : titleOf(descriptor)),
-        ...(descriptor.hidden === true
+        // No guide entry for the editor: its page identity is the `files`
+        // kind takeover below (same view, same title), so listing both would
+        // offer the reader two identical "Files" rows. The type itself stays
+        // registered as the file RESOURCE viewer.
+        ...(descriptor.hidden === true || isEditor
           ? {}
           : {
             guide: [{

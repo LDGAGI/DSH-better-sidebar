@@ -166,12 +166,12 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     service.registerTab({ id: 'editor', title: 'Files', component: () => null })
     const records = createNativeTabRecords()
 
-    const registered: Array<{ id: string; kind: string; title: (address: string) => string }> = []
+    const registered: Array<{ id: string; kind: string; title: (address: string) => string; guide: unknown }> = []
     const slotKeys: string[] = []
     // The registry is ABSENT while the slot callback fires and appears later
     // (that ordering is the regression): a holder keeps the timing honest
     // without a reassigned binding.
-    const registry: { current: { register: (definition: { id: string; kind: string; title: (address: string) => string }) => () => void } | undefined } = { current: undefined }
+    const registry: { current: { register: (definition: { id: string; kind: string; title: (address: string) => string; guide?: unknown }) => () => void } | undefined } = { current: undefined }
     let runInjected: (() => void) | undefined
 
     const ctx = {
@@ -200,7 +200,7 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     // …and everything registers once it appears.
     registry.current = {
       register: (definition) => {
-        registered.push({ id: definition.id, kind: definition.kind, title: definition.title })
+        registered.push({ id: definition.id, kind: definition.kind, title: definition.title, guide: definition.guide })
         return () => {}
       },
     }
@@ -217,6 +217,12 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(editorType?.title('dsh-resource://file/session/s1/src/main.ts')).toBe('main.ts')
     expect(editorType?.title('dsh-resource://file/absolute/work/pkg/a/b.txt')).toBe('b.txt')
     expect(editorType?.title('sidebar://editor')).toBe('Files')
+    // The new-tab/guide list must offer ONE "Files" row: the `files` kind
+    // takeover draws the same explorer the editor page would, so the editor
+    // type contributes no guide entry of its own.
+    expect(editorType?.guide).toBeUndefined()
+    const filesType = registered.find(entry => entry.kind === 'files')
+    expect(filesType?.guide).toBeDefined()
 
     dispose()
   })
