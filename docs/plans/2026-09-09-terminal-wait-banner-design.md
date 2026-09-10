@@ -39,8 +39,9 @@ needle 出现 / 超时 / 终端退出。等待期间用户在侧边栏看不到�
 - `waitFor()`：快速路径（已 exited / needle 已在 transcript）不登记、不推 banner；
   进入轮询前登记记录并 `notify()`（banner 出现），`finally` 移除记录并 `notify()`（banner
   消失——found/timeout/exited/skipped/工具 abort 五条出路统一走 finally）。
-- 轮询每圈优先检查本记录的 `skipped` → 返回 `{ kind:'skipped', needle }`；50ms 轮询
-  天然承载跳过延迟，无需事件唤醒。
+- 轮询每圈检查本记录的 `skipped` → 返回 `{ kind:'skipped', needle }`；50ms 轮询
+  天然承载跳过延迟，无需事件唤醒。与终端退出在同一 tick 竞争时**退出优先**（见实施
+  偏差记录）。
 - 新方法 `skipWait(uuid): number`：标记该 uuid 全部活动记录并返回条数；uuid 未知 →
   `not-found` 404（与 `expect` 一致）。
 - `AgentTerminalSnapshot` 增 `waiting?: { needle: string; since: number }`（取最新登记
@@ -165,3 +166,27 @@ needle 出现 / 超时 / 终端退出。等待期间用户在侧边栏看不到�
   5. 补并发双 `waitFor` 同 uuid 测试：快照显示最新 needle（`waits.at(-1)`）、
      `skipWait` 返回 2、两个 promise 都以各自 needle `skipped` 收敛、快照
      清空且 skipWait 幂等归零。
+- **轮询优先级：终端退出优先于用户跳过**（v0.19.0 发版前 review 发现）：设计原文
+  写「每圈优先检查 `skipped`」，实现是 `aborted → handle.exited → record.skipped`，
+  即 pty 退出与用户点跳过落进同一个 50ms tick 时返回 `exited`。**维持实现现状**，
+  设计原文已同步为「退出优先」：两种顺序下用户可见结果完全相同（banner 消失、
+  `skipWait` 返回 0、等待结束），只有工具结果的 `kind` 文案不同；而进程已死是
+  客观事实，报 `exited` 不撒谎，工具结果本身也引导 agent 用 `terminal_read` 复核。
+  若日后要让「用户意图优先」，改动点是循环内两行先后 + 一条同 tick 竞态测试。
+- **两个已知限制的补充记录**（同一次 review）：
+  1. **pinned tab 的 banner 与 ⏳ 不对称**：pinned 虚拟 id 是
+     `pinned:<homeSessionId>:agent:<uuid>`，`isAgentTabId` 只认 `agent:` 前缀，因此
+     钉住的 agent tab **不会误挂 ⏳**（比"收不到"更强的保证）；但 Workbench 渲染
+     pinned tab 时给 TerminalView 传的是**原 tab id + home 作用域**，所以 home 会话
+     正在等待时该视图**会**显示 banner，而它的 strip 徽章仍不出现。两个信号数据源
+     不同（banner 读 home store，徽章读 viewer 的 `agentWaits`）。
+  2. **⏳ 到不了 DSH 原生右侧栏**：徽章经 `getTabBadge` 渲染，唯一消费点是插件
+     自绘的 `TabBar`；原生栏的 `NativeTabTitle` 契约只带 title，不带 badge。agent
+     终端标签页走 `openTabInBottomPane`（底部工作台），故 agent 流程可见；这是原生
+     承载面契约决定的上限，非本特性缺陷。
+- **注释随实现同步**（v0.19.0 发版前 review）：`use-host-feeds.ts` effect 头部原写
+  「terminal tab 类型禁用时 pushes are ignored」，与上面第 3 项的 `mirrorAgentWaits`
+  改法矛盾，已改为「不增删 tab，但仍镜像权威 wait map」；`src/index.ts` 的
+  `agent-pty.skip-wait` 注释原文把「无活动等待 → 0」泛化成了「幂等」，已收窄为
+  「无活动等待返回 `{skipped:0}`；未知 uuid 走 `expect` → 404（已退出的终端即属此
+  列），客户端 `.catch` 容忍并等下一次推送收敛」。

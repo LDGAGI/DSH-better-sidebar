@@ -547,8 +547,10 @@ function buildApi(
       return { ok: true }
     },
     // The sidebar wait banner's skip button: abort every active
-    // terminal_wait_for on one agent terminal. Idempotent — 0 when nothing
-    // is waiting (a stale banner racing a wait that already resolved).
+    // terminal_wait_for on one agent terminal. An unknown uuid (a terminal
+    // already closed / reaped) goes through `expect` and surfaces as 404
+    // not-found; the client tolerates that and lets the next push converge.
+    // Nothing waiting on a live terminal is not an error: 0 skipped.
     // Degraded mode (node-pty unavailable) has no registry and no waits: an
     // honest ok.
     'agent-pty.skip-wait': (payload) => {

@@ -12,6 +12,7 @@ import {
   snapshotOf,
   tryResizePty,
 } from '../src/agent-pty.ts'
+import { SidebarError } from '../src/wire.ts'
 
 /**
  * Resolve a shell binary for tests: on Windows use PowerShell (available on
@@ -478,6 +479,17 @@ describe('AgentPtyRegistry', () => {
     const registry = new AgentPtyRegistry(testShell())
     try {
       expect(() => registry.skipWait('missing-uuid')).toThrow(/not found/)
+      // The HTTP layer maps `status` straight onto the response, so the 404
+      // contract rides this field — assert it, not just the message.
+      let thrown: unknown
+      try {
+        registry.skipWait('missing-uuid')
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toBeInstanceOf(SidebarError)
+      expect((thrown as SidebarError).status).toBe(404)
+      expect((thrown as SidebarError).code).toBe('not-found')
     } finally {
       registry.disposeAll()
     }

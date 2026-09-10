@@ -94,8 +94,9 @@ export function useHostFeeds(feeds: {
    * the same shell without losing the agent's work — capped like the
    * terminal view's own reconnect loop, so a refused endpoint never spins
    * forever (the next session switch restarts the loop).
-   * While the terminal tab type is disabled in settings, pushes are
-   * ignored (no auto-added tabs); re-enabling makes the next push converge.
+   * While the terminal tab type is disabled in settings, pushes add / remove
+   * no tabs — but the authoritative wait map is STILL mirrored (see the
+   * branch below); re-enabling makes the next push converge on both.
    */
   useEffect(() => {
     if (sessionId === undefined) return

@@ -569,6 +569,13 @@ export class AgentPtyRegistry {
     handle.waits.push(record)
     this.notify()
     try {
+      // Exit outranks a skip in the same tick: `skipWait` flips `record.skipped`
+      // and the next poll observes it, but a pty that died first is the
+      // objective fact (a skip is moot once the process is gone). The user
+      // sees the same three things either way — the banner clears, `skipWait`
+      // reports 0 for the resolved wait, and the tool result says the wait
+      // ended — only the reported `kind` differs (see the design doc's
+      // implementation-deviation record).
       while (true) {
         if (signal?.aborted) signal.throwIfAborted()
         if (handle.exited) {
