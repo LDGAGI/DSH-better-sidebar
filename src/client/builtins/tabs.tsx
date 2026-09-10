@@ -22,7 +22,7 @@ import { SubagentView } from '../SubagentView.tsx'
 import { consumeSidechatSeed, SideChatView, sidechatThreadIdOf } from '../SideChatView.tsx'
 import { api } from '../api.ts'
 import { BrowserView } from '../BrowserView.tsx'
-import { IconTerminalOutline16, IconDiffOutline16, IconGlobeOutline16, IconFloatWindowOutline16, IconPanelBottomOutline16 } from '../icons.tsx'
+import { IconTerminalOutline16, IconDiffOutline16, IconGlobeOutline16 } from '../icons.tsx'
 import { TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN } from '../../prefs-shared.ts'
 import type { ComponentType } from 'react'
 import type { SessionScope } from '../api.ts'
@@ -72,7 +72,7 @@ function terminalUuid(): string {
 
 /** Count UI-owned terminals (agent:` tabs excluded — they are the model's). */
 function uiTerminalCount(state: SidebarState): number {
-  return allLeaves(state.splits)
+  return allLeaves(state.bottomSplits)
     .flatMap(leaf => leaf.tabs)
     .filter(tab => tab.type === 'terminal' && !isAgentTabId(tab.id)).length
 }
@@ -82,6 +82,7 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
   return [
     {
       id: 'editor',
+      description: () => t('guideDescFiles'),
       // The single files window: an editor tab with no path IS the file
       // explorer (empty hint + docked tree); with a path it previews/edits
       // the file. Visible in the + menu in the explorer's old slot.
@@ -148,37 +149,13 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
       // log, and the git status needs a fetch — both stay out of the badge).
       id: 'git',
       title: () => t('changes'),
+      description: () => t('guideDescGit'),
       icon: (size: number) => <IconDiffOutline16 size={size} />,
       order: 20,
       single: true,
       badge: (_ctx, scope) => {
         const count = opCountOf(scope.sessionId)
         return count === undefined || count === 0 ? null : count
-      },
-      // Declarative settings: the diff-open picker (free window vs docked
-      // pane) renders as an iconed select row under the changes card's gear
-      // in the Side card settings page.
-      settings: {
-        toggles: [{
-          key: 'changesDiffFloat',
-          type: 'select',
-          title: () => t('changesDiffOpenTitle'),
-          desc: () => t('changesDiffOpenDesc'),
-          options: [
-            {
-              value: true,
-              icon: (size: number) => <IconFloatWindowOutline16 size={size} />,
-              title: () => t('changesDiffOpenFloat'),
-              desc: () => t('changesDiffOpenFloatDesc'),
-            },
-            {
-              value: false,
-              icon: (size: number) => <IconPanelBottomOutline16 size={size} />,
-              title: () => t('changesDiffOpenPane'),
-              desc: () => t('changesDiffOpenPaneDesc'),
-            },
-          ],
-        }],
       },
       component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => (
         <ChangesTab
@@ -195,6 +172,7 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'subagent',
       title: () => t('subagent'),
+      description: () => t('guideDescSubagent'),
       icon: (size: number) => <IconThinkOutline16 size={size} />,
       order: 30,
       single: true,
@@ -223,6 +201,7 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'sidechat',
       title: () => t('sideChat'),
+      description: () => t('guideDescSidechat'),
       icon: (size: number) => <IconNewChatOutline16 size={size} />,
       order: 35,
       // Codex-style: EVERY side conversation is its own tab. A plain open
@@ -268,6 +247,7 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'terminal',
       title: () => t('terminal'),
+      description: () => t('guideDescTerminal'),
       icon: (size: number) => <IconTerminalOutline16 size={size} />,
       order: 40,
       available: (_ctx, _scope, state) => uiTerminalCount(state) < TERMINAL_LIMIT,
@@ -332,6 +312,7 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
     {
       id: 'browser',
       title: () => t('browser'),
+      description: () => t('guideDescBrowser'),
       icon: (size: number) => <IconGlobeOutline16 size={size} />,
       order: 50,
       // Declarative settings: the sandbox escape hatch, the link-takeover

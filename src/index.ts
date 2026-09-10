@@ -54,7 +54,9 @@ import { AgentOpenRegistry, registerOpenTool, type AgentOpenRequest } from './ag
 import { buildJobsApi, type SidebarJobsRoutes } from './jobs-routes.ts'
 import { buildSubagentLiveApi, type SidebarSubagentLiveRoutes } from './subagent-live-route.ts'
 import { buildSidechatApi } from './sidechat-routes.ts'
+import { createAssistantLiveBuffer, type AssistantLiveBuffer } from './assistant-live.ts'
 import { readJsonBody, requireString, SidebarError, writeError, writeJson, writeOk } from './wire.ts'
+import { readPersistedSession } from './session-store.ts'
 
 export { Config }
 export type { SidebarConfig, ResolvedSidebarConfig }
@@ -129,8 +131,8 @@ async function sessionCwdOf(ctx: Context, sessionId: string, clientCwd?: string)
   }
   const persistence = ctx.get('sessionPersistence')
   if (persistence !== undefined) {
-    const inspected = await persistence.inspect(sessionId)
-    const metaCwd = inspected.meta.cwd
+    const persisted = await readPersistedSession(persistence, sessionId)
+    const metaCwd = persisted.header.cwd
     if (metaCwd !== undefined && metaCwd !== '') {
       try {
         return requireAbsolute(metaCwd)
@@ -298,6 +300,7 @@ function buildApi(
   resolved: ResolvedSidebarConfig,
   terminalShell: string,
   getSettings: () => SidebarSettingsFace | undefined,
+  assistantLive: AssistantLiveBuffer,
 ): Record<string, ApiMethod> {
   const cwdOf = async (payload: unknown): Promise<{ sessionId: string; cwd: string }> => {
     const sessionId = requireString(payload, 'sessionId')
@@ -507,7 +510,7 @@ function buildApi(
         const persistence = ctx.get('sessionPersistence')
         if (persistence !== undefined) {
           try {
-            events = (await persistence.inspect(sessionId)).events
+            events = (await readPersistedSession(persistence, sessionId)).events
           } catch {
             // Cold read unavailable (session never persisted): an empty
             // window is the honest answer, not a wire error.
@@ -703,7 +706,7 @@ function buildApi(
     // identities are fenced from the generic session RPCs (agent-lookup
     // ownership), and the thread is created with a CUSTOM seed the stock
     // fork APIs cannot express.
-    ...buildSidechatApi(ctx),
+    ...buildSidechatApi(ctx, assistantLive),
   }
 }
 
@@ -868,7 +871,14 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
   })
 
   // ── JSON API ────────────────────────────────────────────────────────────
-  const api = buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, () => settingsFace)
+  // The live assistant stream buffer: DSH 0.1.5 publishes in-flight model
+  // deltas as process-local `agent/assistant-stream` frames instead of the
+  // durable `assistant/chunk` events 0.1.2 logged, so the side-chat
+  // transcript and the inherited in-progress snapshot read them here. The
+  // effect releases the listener on fiber disposal.
+  const assistantLive = createAssistantLiveBuffer(ctx)
+  ctx.effect(() => () => { assistantLive.dispose() }, 'dsh-better-sidebar: live assistant stream buffer')
+  const api = buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, () => settingsFace, assistantLive)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: '/sidebar/api',

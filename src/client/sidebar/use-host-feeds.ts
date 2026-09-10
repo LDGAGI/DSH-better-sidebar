@@ -7,8 +7,7 @@
  */
 import { useEffect, useRef } from 'react'
 import type { Context, SidebarSessionList } from '../../context-types.ts'
-import { firstLeaf, reconcileAgentTerminals, togglePanel, type SidebarStore } from '../state.ts'
-import { isNarrowWidth } from '../breakpoints.ts'
+import { reconcileAgentTerminals, type SidebarStore } from '../state.ts'
 import { detectNewDirectSubagent } from '../subagent-detect.ts'
 import { detectNewJob } from '../subagent-jobs.ts'
 import { t } from '../locales.ts'
@@ -197,17 +196,7 @@ export function useHostFeeds(feeds: {
       if (!detectNewDirectSubagent(baseline, ctx.sessions.list.getSnapshot(), sessionId)) return
       if (!store.getPrefs().autoOpenSubagent) return
       if (ctx.get('betterSidebar')?.isTabEnabled('subagent') === false) return
-      // Read the viewport when the delayed activation fires: a resize while
-      // the debounce is armed must not let background activity force the
-      // narrow full-screen drawer open over the chat.
-      if (!isNarrowWidth(window.innerWidth)) {
-        store.reduce(s => s.panelOpen ? s : togglePanel(s))
-      }
-      // Choose the right panel as the landing pane for a newly created Tasks
-      // tab. Single-instance dedupe still activates an existing pane tab in
-      // place or raises an existing free window.
-      store.reduce(s => ({ ...s, activePane: firstLeaf(s.splits).id }))
-      ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
+      ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent'), target: 'bottom' })
     }, AUTO_OPEN_DEBOUNCE_MS)
     autoOpenPendingRef.current = { baseline, timer }
   }, [sessionList, sessionId, store, ctx])
@@ -237,11 +226,7 @@ export function useHostFeeds(feeds: {
     if (!detectNewJob(prev, sessionList, sessionId)) return
     if (!store.getPrefs().autoOpenJobs) return
     if (ctx.get('betterSidebar')?.isTabEnabled('subagent') === false) return
-    if (!isNarrowWidth(window.innerWidth)) {
-      store.reduce(s => s.panelOpen ? s : togglePanel(s))
-    }
-    store.reduce(s => ({ ...s, activePane: firstLeaf(s.splits).id }))
-    ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
+    ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent'), target: 'bottom' })
   }, [sessionList, sessionId, store, ctx])
 
   /**
@@ -260,9 +245,7 @@ export function useHostFeeds(feeds: {
     const pending = subagentJumpRef.current
     if (pending === undefined || sessionId !== pending) return
     subagentJumpRef.current = undefined
-    store.reduce(s => s.panelOpen ? s : togglePanel(s))
-    store.reduce(s => ({ ...s, activePane: firstLeaf(s.splits).id }))
-    ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
+    ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent'), target: 'bottom' })
   }, [sessionId, store, ctx])
 
   return { subagentJumpRef }

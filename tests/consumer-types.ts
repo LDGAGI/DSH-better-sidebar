@@ -46,7 +46,7 @@ const tab: TabDescriptor = {
   icon: (_size: number) => null,
   order: 50,
   hidden: false,
-  available: (ctx, scope, state) => scope.sessionId !== '' && state.panelOpen && ctx !== null,
+  available: (ctx, scope, state) => scope.sessionId !== '' && state.bottomOpen && ctx !== null,
   single: false,
   dedupeKey: (t: SidebarTab) => t.id,
   createTab: (state: SidebarState) => ({

@@ -15,7 +15,7 @@ import { setupReactAct } from './test-utils.ts'
 setupReactAct()
 
 import { Sidebar } from '../src/client/Sidebar.tsx'
-import { createSidebarStore, openTabInActivePane } from '../src/client/state.ts'
+import { createSidebarStore, openTabInBottomPane } from '../src/client/state.ts'
 import { createBetterSidebarService, type BetterSidebarService } from '../src/client/service.ts'
 
 /** jsdom has no WebSocket; the agent-terminals push effect constructs one on mount. */
@@ -119,7 +119,7 @@ describe('agent terminal wait badge (push → state → tab pill)', () => {
     const { container, store } = mountSidebar()
     // A UI-owned terminal tab (id NOT agent:) lives in the strip too; the
     // badge lookup keys on the agent uuid, so it never badges.
-    act(() => { store.reduce(s => openTabInActivePane(s, { id: 'terminal:manual-1', type: 'terminal', title: 'UI terminal' })) })
+    act(() => { store.reduce(s => openTabInBottomPane(s, { id: 'terminal:manual-1', type: 'terminal', title: 'UI terminal' })) })
     const terminal = { uuid: 'u1', title: 'dev server', command: '', exited: false }
     act(() => { feedsSocket().onmessage?.({ data: JSON.stringify([{ ...terminal, waiting: { needle: 'READY_1', since: 1 } }]) }) })
     // Exactly ONE hourglass: the agent tab. (Counted from textContent — CSS
