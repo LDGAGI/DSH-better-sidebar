@@ -19,6 +19,12 @@
 /** The pl dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const pl: Record<string, string> = {
   files: 'Pliki',
+  guideDescFiles: 'Przeglądaj drzewo plików obszaru roboczego; klik otwiera podgląd lub edycję',
+  guideDescGit: 'Zmiany Git i zmiany plików z tej sesji w jednej karcie',
+  guideDescSubagent: 'Topologia subagentów i zadania w tle na żywo',
+  guideDescSidechat: 'Niezależny wątek uzupełniający dziedziczący kontekst tej sesji',
+  guideDescTerminal: 'Prawdziwy shell (xterm + pty) z ponownym łączeniem',
+  guideDescBrowser: 'Wbudowana przeglądarka, może przejmować linki z czatu',
   changesSessionEmpty: 'Brak operacji na plikach w tej sesji',
   changesRead: 'Odczyt',
   changesMdReading: 'Czytanie',

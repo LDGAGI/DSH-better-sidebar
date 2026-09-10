@@ -165,8 +165,9 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     const store = createSidebarStore()
     store.setSession('s1')
     const service = createBetterSidebarService(store)
-    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null })
-    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null })
+    service.registerTab({ id: 'terminal', title: 'Terminal', component: () => null, description: () => 'Runs a shell' })
+    service.registerTab({ id: 'editor', title: 'Files', component: () => null, icon: () => null, description: () => 'Browse the tree' })
+    service.registerTab({ id: 'browser', title: 'Browser', component: () => null })
     const records = createNativeTabRecords()
 
     const registered: Array<{ id: string; kind: string; title: (address: string) => string; guide: unknown }> = []
@@ -208,7 +209,7 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
       },
     }
     runInjected?.()
-    expect(registered.map(entry => entry.kind).sort()).toEqual(['editor', 'files', 'terminal'])
+    expect(registered.map(entry => entry.kind).sort()).toEqual(['browser', 'editor', 'files', 'terminal'])
     expect(registered.map(entry => entry.id)).toContain('dsh-better-sidebar:files')
     expect(slotKeys).toContain('dsh-better-sidebar:terminal')
     expect(slotKeys).toContain('dsh-better-sidebar:files')
@@ -228,19 +229,27 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     expect(filesType?.guide).toBeDefined()
     // The takeover carries the editor's glyph, so the "Files" guide row is
     // not the only one with a blank icon slot.
-    const filesGuide = filesType?.guide as Array<{ icon?: unknown; title: () => string; description?: unknown }> | undefined
+    const filesGuide = filesType?.guide as Array<{ icon?: unknown; title: () => string; description?: () => string }> | undefined
     expect(filesGuide?.[0]?.icon).toBeDefined()
-    // DSH 0.1.5-alpha.2 renders guide entries as icon+title capsules — the
-    // `description` field is GONE from the host contract, so no entry may
-    // carry one (a leftover would be silently ignored, not rendered).
-    expect(filesGuide?.[0]?.description).toBeUndefined()
-    expect('description' in (filesGuide?.[0] ?? {})).toBe(false)
-    expect(filesGuide?.[0]?.title?.()).toBe('Files')
+    // DSH 0.1.5-rc.1 restored the guide `description` as an optional
+    // `() => string` (rendered only while the guide lists at most 4
+    // entries). The takeover IS the editor's page, so its guide line is the
+    // EDITOR descriptor's description (the takeover reuses it, exactly as it
+    // reuses the glyph), evaluated fresh per call so a thunk follows the
+    // active locale.
+    expect(filesGuide?.[0]?.description?.()).toBe('Browse the tree')
     const terminalGuide = registered.find(entry => entry.kind === 'terminal')?.guide as
+      Array<{ description?: () => string }> | undefined
+    expect(terminalGuide?.[0]?.description?.()).toBe('Runs a shell')
+    // A descriptor that declares NO description must reach the host with no
+    // `description` field at all — the host has no fallback of its own, so
+    // an empty thunk would render a blank second line instead of a clean
+    // title-only capsule.
+    const browserGuide = registered.find(entry => entry.kind === 'browser')?.guide as
       Array<{ title: () => string; description?: unknown }> | undefined
-    expect(terminalGuide?.[0]?.description).toBeUndefined()
-    expect('description' in (terminalGuide?.[0] ?? {})).toBe(false)
-    expect(terminalGuide?.[0]?.title?.()).toBe('Terminal')
+    expect(browserGuide?.[0]?.description).toBeUndefined()
+    expect('description' in (browserGuide?.[0] ?? {})).toBe(false)
+    expect(browserGuide?.[0]?.title?.()).toBe('Browser')
 
     dispose()
   })

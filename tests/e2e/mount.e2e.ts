@@ -347,6 +347,56 @@ test('plugin mounts into the DSH shell and survives a built-in tab sweep', async
     )
     .toBe('filled')
 
+  // DSH 0.1.5-rc.1 renders a guide entry's `description` line only while
+  // the guide lists at most 4 entries (`MAX_DESCRIBED_ENTRIES` in the host's
+  // GuideBody) — a longer list drops every description and shows titles
+  // alone. Shrink the enabled set through the plugin's OWN settings route
+  // (scratch-profile prefs only, never the user's) so three types stay
+  // enabled (files / sidechat / browser), then require the Files capsule to
+  // really grow its description line. This is the host-side proof of the
+  // rc.1 description restore: before it every entry was a title-only
+  // capsule, so no entry count could ever surface the text.
+  const settingsGet = await api.post(sidebarApi('settings.get'), { data: {} })
+  expect(settingsGet.ok(), `settings.get: ${settingsGet.status()}`).toBe(true)
+  const settingsGetBody = (await settingsGet.json()) as { value?: { tabsEnabled?: Record<string, boolean> } }
+  const originalTabsEnabled = settingsGetBody.value?.tabsEnabled ?? {}
+  /** The types this check switches off (leaving three entries, i.e. ≤4). */
+  const shrunken = ['git', 'subagent', 'terminal'] as const
+  try {
+    // Send the FULL map back (the route's patch is key-wise merged, so a
+    // full map is correct whether the host merges or replaces).
+    const tabsEnabled: Record<string, boolean> = { ...originalTabsEnabled }
+    for (const id of shrunken) tabsEnabled[id] = false
+    const tabsUpdate = await api.post(sidebarApi('settings.update'), { data: { patch: { tabsEnabled } } })
+    expect(tabsUpdate.ok(), `settings.update (tabsEnabled): ${tabsUpdate.status()} ${await tabsUpdate.text()}`).toBe(true)
+    // Re-seed the guide (a pane holds one guide tab) and wait for the
+    // shrunken list: the three remaining entries render their descriptions.
+    if (await page.locator('[data-sidebar-right-guide]').count() === 0) await addTab.click()
+    const filesCapsule = page.locator('[data-sidebar-right-guide-entry="files"]')
+    await expect(filesCapsule, 'the Files entry must still be offered after the shrink').toHaveCount(1, { timeout: 30_000 })
+    await expect(
+      filesCapsule,
+      'with ≤4 guide entries the Files capsule must render its description line',
+    ).toContainText('workspace tree', { timeout: 30_000 })
+    for (const disabled of shrunken) {
+      await expect(
+        page.locator(`[data-sidebar-right-guide-entry="${disabled}"]`),
+        `the disabled "${disabled}" type must leave the guide`,
+      ).toHaveCount(0)
+    }
+  } finally {
+    // Restore the profile's original prefs even on failure. The patch merges
+    // key-wise, so sending the original map back is NOT enough — the three
+    // `false` entries written above would survive. Every key this check
+    // touched is restored explicitly (an absent key means enabled, so a key
+    // the profile never set goes back to `true`). This lane's later tests
+    // (perf.e2e.ts) sweep the guide and would otherwise find types missing.
+    const restored: Record<string, boolean> = { ...originalTabsEnabled }
+    for (const id of shrunken) restored[id] = originalTabsEnabled[id] ?? true
+    const restore = await api.post(sidebarApi('settings.update'), { data: { patch: { tabsEnabled: restored } } })
+    expect(restore.ok(), `settings.update (restore tabsEnabled): ${restore.status()} ${await restore.text()}`).toBe(true)
+  }
+
   // Side Chat host-route smoke against the REAL host: create a thread child
   // under the seeded session (custom-seed creation through AgentRegistry),
   // deliver a follow-up, cancel, and release it. The turn itself cannot run
