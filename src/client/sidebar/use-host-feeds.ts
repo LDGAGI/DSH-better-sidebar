@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef } from 'react'
 import type { Context, SidebarSessionList } from '../../context-types.ts'
-import { reconcileAgentTerminals, type SidebarStore } from '../state.ts'
+import { mirrorAgentWaits, reconcileAgentTerminals, type SidebarStore } from '../state.ts'
 import { detectNewDirectSubagent } from '../subagent-detect.ts'
 import { detectNewJob } from '../subagent-jobs.ts'
 import { t } from '../locales.ts'
@@ -65,7 +65,12 @@ export function useHostFeeds(feeds: {
           const list = JSON.parse(event.data) as Array<{ uuid: string; title: string; command: string; exited: boolean; waiting?: { needle: string; since: number } | null }>
           if (!Array.isArray(list)) return
           store.reduce(s => ctx.get('betterSidebar')?.isTabEnabled('terminal') === false
-            ? s
+            // Terminal tabs are disabled: skip tab add/remove reconciliation,
+            // but STILL mirror the authoritative wait map — a wait resolving
+            // during the disabled window must clear its banner state, or a
+            // re-enabled terminal keeps a stale banner until the next
+            // unrelated push.
+            ? mirrorAgentWaits(s, list)
             : reconcileAgentTerminals(s, list))
         } catch {
           // Malformed push: ignore (the next push will reconcile).

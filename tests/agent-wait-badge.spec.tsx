@@ -33,6 +33,11 @@ class FakeWebSocket {
 /** Unique per-test session ids (see the comment inside mountSidebar). */
 let sessionSeq = 0
 
+/** Roots mounted by the current test; afterEach unmounts them (reverse
+ *  order) so React effect cleanup (store subscription, host-feed sockets,
+ *  debounced persistence) actually runs between tests. */
+const mounted: Array<() => void> = []
+
 function mountSidebar(): { container: HTMLDivElement; store: ReturnType<typeof createSidebarStore>; service: BetterSidebarService; unmount: () => void } {
   vi.stubGlobal('WebSocket', FakeWebSocket)
   FakeWebSocket.instances = []
@@ -66,18 +71,19 @@ function mountSidebar(): { container: HTMLDivElement; store: ReturnType<typeof c
   }
   const root: Root = createRoot(container)
   act(() => { root.render(createElement(Sidebar, { ctx: ctx as never, store })) })
-  return {
-    container,
-    store,
-    service,
-    unmount: () => {
-      act(() => { root.unmount() })
-      container.remove()
-    },
+  const unmount = (): void => {
+    act(() => { root.unmount() })
+    container.remove()
   }
+  mounted.push(unmount)
+  return { container, store, service, unmount }
 }
 
 afterEach(() => {
+  // Unmount BEFORE wiping the DOM: root.unmount() must run the shell's
+  // effect cleanups (store subscription, WS close, persistence debounce);
+  // document.body.innerHTML = '' alone leaves them alive into later tests.
+  for (const unmount of mounted.splice(0).reverse()) unmount()
   document.body.innerHTML = ''
   // Belt and braces (same as bottom-auto-terminal): drop any persisted layout
   // a pending 200ms debounce write left behind between tests. Fully guarded —

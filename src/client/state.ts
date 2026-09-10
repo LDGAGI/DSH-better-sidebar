@@ -687,6 +687,19 @@ function sameAgentWaits(
   return true
 }
 
+/** Fold the pushed terminal snapshots into the authoritative wait map. */
+function serverWaitsOf(
+  agentTerminals: ReadonlyArray<{ uuid: string; title: string; waiting?: { needle: string; since: number } | null }>,
+): Record<string, { needle: string; since: number }> {
+  const serverWaits: Record<string, { needle: string; since: number }> = {}
+  for (const terminal of agentTerminals) {
+    if (terminal.waiting !== undefined && terminal.waiting !== null) {
+      serverWaits[terminal.uuid] = { needle: terminal.waiting.needle, since: terminal.waiting.since }
+    }
+  }
+  return serverWaits
+}
+
 /**
  * Reconcile the sidebar's agent-terminal tabs with the host's live list.
  * The host pushes the current list of agent terminals (created by the model
@@ -719,12 +732,7 @@ export function reconcileAgentTerminals(
   // waiting field simply drops the entry). A waits-only change must still
   // produce a new state — the tab add/remove no-change check alone would
   // swallow banner updates.
-  const serverWaits: Record<string, { needle: string; since: number }> = {}
-  for (const terminal of agentTerminals) {
-    if (terminal.waiting !== undefined && terminal.waiting !== null) {
-      serverWaits[terminal.uuid] = { needle: terminal.waiting.needle, since: terminal.waiting.since }
-    }
-  }
+  const serverWaits = serverWaitsOf(agentTerminals)
   if (toAdd.length === 0 && toRemove.length === 0 && sameAgentWaits(state.agentWaits, serverWaits)) return state
   // Remove tabs whose uuids vanished from the server list (the agent closed
   // them, or the pty exited and was reaped). Reuse closeTab's leaf cleanup.
@@ -748,6 +756,23 @@ export function reconcileAgentTerminals(
     next = openTabInBottomPane(next, tab)
   }
   return { ...next, agentWaits: serverWaits }
+}
+
+/**
+ * Mirror ONLY the authoritative agent-wait map from a push — no tab
+ * add/remove reconciliation. Used while the `terminal` tab type is disabled:
+ * the tab surface is frozen, but a wait that resolves during that window
+ * must still clear its banner state, or a re-enabled terminal keeps a stale
+ * banner/⏳ until some unrelated host event fires the next full reconcile.
+ * Idempotent: a no-op when the map already matches.
+ */
+export function mirrorAgentWaits(
+  state: SidebarState,
+  agentTerminals: ReadonlyArray<{ uuid: string; title: string; waiting?: { needle: string; since: number } | null }>,
+): SidebarState {
+  const serverWaits = serverWaitsOf(agentTerminals)
+  if (sameAgentWaits(state.agentWaits, serverWaits)) return state
+  return { ...state, agentWaits: serverWaits }
 }
 
 // ── The per-session store ──────────────────────────────────────────────────

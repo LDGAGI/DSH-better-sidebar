@@ -430,6 +430,31 @@ describe('AgentPtyRegistry', () => {
     }
   })
 
+  it('concurrent waits on one uuid: snapshot shows the latest needle, skipWait skips all', async () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      const uuid = registry.create('s1', 'concurrent', '', process.cwd(), 80, 24)
+      // The bare shell never emits either needle → both waits miss the fast
+      // paths and register their records (synchronously, before waitFor's
+      // first poll await — the documented concurrent-wait contract).
+      const first = registry.waitFor(uuid, 'NEVER_A_XYZ', 60_000)
+      const second = registry.waitFor(uuid, 'NEVER_B_XYZ', 60_000)
+      // The banner mirrors the LATEST wait (waits.at(-1)).
+      expect(registry.list('s1')[0]?.waiting?.needle).toBe('NEVER_B_XYZ')
+      expect(typeof registry.list('s1')[0]?.waiting?.since).toBe('number')
+      // One skip transitions EVERY active wait on the terminal.
+      expect(registry.skipWait(uuid)).toBe(2)
+      expect(await first).toEqual({ kind: 'skipped', needle: 'NEVER_A_XYZ' })
+      expect(await second).toEqual({ kind: 'skipped', needle: 'NEVER_B_XYZ' })
+      // Both resolved → the wait state cleared from the snapshot.
+      expect(registry.list('s1')[0]?.waiting).toBeUndefined()
+      // Idempotent: nothing left to skip.
+      expect(registry.skipWait(uuid)).toBe(0)
+    } finally {
+      registry.disposeAll()
+    }
+  })
+
   it('fires change listeners when a wait starts and ends', async () => {
     const registry = new AgentPtyRegistry(testShell())
     try {

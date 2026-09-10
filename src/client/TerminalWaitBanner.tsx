@@ -12,16 +12,27 @@ import css from './sidebar.module.css'
 /** Cap the needle shown inline; the full text rides the title tooltip. */
 const NEEDLE_DISPLAY_CAP = 80
 
-/** Truncate one needle for inline display (title attr carries the full text). */
+/** Truncate one needle for inline display (title attr carries the full text).
+ *  Cut by Unicode code points, not UTF-16 code units — a naive slice can split
+ *  a surrogate pair at the cutoff and render a dangling replacement char. */
 export function truncateNeedle(needle: string): string {
-  return needle.length > NEEDLE_DISPLAY_CAP ? `${needle.slice(0, NEEDLE_DISPLAY_CAP - 1)}…` : needle
+  const points = Array.from(needle)
+  return points.length > NEEDLE_DISPLAY_CAP
+    ? `${points.slice(0, NEEDLE_DISPLAY_CAP - 1).join('')}…`
+    : needle
 }
 
 export function TerminalWaitBanner(props: { needle: string; onSkip: () => void }) {
   const { needle, onSkip } = props
   return (
     <div className={css.terminalWaitBanner}>
-      <span className={css.terminalWaitNeedle} title={needle}>
+      <span
+        className={css.terminalWaitNeedle}
+        title={needle}
+        role="status"
+        aria-live="polite"
+        aria-label={t('terminalWaitBanner', { needle })}
+      >
         {t('terminalWaitBanner', { needle: truncateNeedle(needle) })}
       </span>
       <button type="button" className={css.terminalRetry} onClick={onSkip}>

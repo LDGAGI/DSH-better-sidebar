@@ -150,3 +150,18 @@ needle 出现 / 超时 / 终端退出。等待期间用户在侧边栏看不到�
   实时等待状态。修复需跨会话 wait feed 多路复用（连 home 会话推送或聚合
   推送），超出本特性范围，留待后续设计；跳过 API 按 uuid 全局寻址，跨会话
   跳过本身可达。
+- **Copilot review 第三轮修复（合并 rc.1 后扫描）**：
+  1. `truncateNeedle` 改按 Unicode 码点截断（`Array.from`），原 UTF-16 码元
+     截断会在截断点劈开代理对（emoji 渲染为替换字符）；
+  2. banner 消息加 `role="status"` + `aria-live="polite"`，完整未截断的
+     本地化消息经 `aria-label` 提供给读屏器（不新增词典键）；
+  3. `terminal` tab 类型禁用时推送处理从整体跳过改为 `mirrorAgentWaits`
+     ——仍镜像权威 `waiting` map（等在禁用窗口内 resolve 也清 banner 状态），
+     只跳过 tab 增删 reconcile，否则重启用后已开终端残留 stale banner/⏳
+     直到无关推送到达；
+  4. badge 测试跟踪挂载的 root 并在 `afterEach` 里先 unmount 再清 DOM
+     （裸 `innerHTML = ''` 不触发 React effect 清理，store 订阅/host-feed
+     effect 会泄漏进后续测试）；
+  5. 补并发双 `waitFor` 同 uuid 测试：快照显示最新 needle（`waits.at(-1)`）、
+     `skipWait` 返回 2、两个 promise 都以各自 needle `skipped` 收敛、快照
+     清空且 skipWait 幂等归零。
