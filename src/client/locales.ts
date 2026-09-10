@@ -24,6 +24,12 @@
 /** The zh dictionary (also registered into the DSH locale registry under {@link LOCALE_NS}). */
 export const zh = {
   files: '文件',
+  guideDescFiles: '浏览工作区文件树，点开即预览或编辑',
+  guideDescGit: 'Git 变更与本轮文件改动，双视角合一',
+  guideDescSubagent: '子代理拓扑与后台任务，实时状态',
+  guideDescSidechat: '继承当前会话上下文的独立追问线程',
+  guideDescTerminal: '真实 shell 终端（xterm + pty），断线重连',
+  guideDescBrowser: '内嵌网页浏览器，可接管聊天里的外链',
   changesSessionEmpty: '本会话还没有文件操作',
   changesRead: '读取',
   changesMdReading: '阅读',
@@ -458,6 +464,12 @@ export const zh = {
 /** The en dictionary (key-set-equal to zh, enforced by the type annotation). */
 export const en: Record<keyof typeof zh, string> = {
   files: 'Files',
+  guideDescFiles: 'Browse the workspace tree; click a file to preview or edit',
+  guideDescGit: 'Git changes and this session\'s file edits, in one tab',
+  guideDescSubagent: 'Subagent topology and background jobs, live',
+  guideDescSidechat: 'An independent follow-up thread inheriting this session\'s context',
+  guideDescTerminal: 'A real shell (xterm + pty) with reconnect',
+  guideDescBrowser: 'An embedded browser that can take over chat links',
   changesSessionEmpty: 'No file operations in this session yet',
   changesRead: 'Read',
   changesMdReading: 'Reading',

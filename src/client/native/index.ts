@@ -43,7 +43,7 @@ interface NativeTabRegistry {
     priority?: 'extension' | 'builtin' | 'fallback'
     canOpen?: (address: string) => boolean
     title: (address: string) => string
-    guide?: readonly { order: number; title: () => string; icon?: unknown }[]
+    guide?: readonly { order: number; title: () => string; description?: () => string; icon?: unknown }[]
   }): () => void
 }
 
@@ -61,6 +61,21 @@ function nativeId(descriptorId: string): string {
 /** The descriptor's title text, evaluated fresh for the current locale. */
 function titleOf(descriptor: TabDescriptor): string {
   return typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
+}
+
+/**
+ * The guide fields carrying the descriptor's own description line, evaluated
+ * fresh for the current locale. DSH 0.1.5-rc.1 renders `description` only
+ * while the guide lists at most 4 entries, and a descriptor that declares
+ * none must reach the host with NO `description` field at all — the host has
+ * no fallback of its own, so an empty string would render as a blank second
+ * line rather than a clean title-only capsule.
+ * @param descriptor - the tab descriptor owning the guide entry.
+ * @returns the `description` field, or an empty object.
+ */
+function guideDescriptionOf(descriptor: TabDescriptor | undefined): { description?: () => string } {
+  const description = descriptor?.description
+  return description === undefined ? {} : { description: () => (typeof description === 'function' ? description() : description) }
 }
 
 /**
@@ -181,6 +196,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
             guide: [{
               order: descriptor.order ?? 100,
               title: () => titleOf(descriptor),
+              ...guideDescriptionOf(descriptor),
               ...guideIconOf(icon),
             }],
           }),
@@ -208,8 +224,9 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
           order: 10,
           title: () => t('files'),
           // The takeover IS the editor descriptor's page, so it carries the
-          // editor's glyph: without it the "Files" row is the only guide
-          // entry with an empty icon slot.
+          // editor's glyph AND guide line: without them the "Files" row is
+          // the only guide entry with a blank icon slot and no description.
+          ...guideDescriptionOf(editor),
           ...guideIconOf(editor?.icon),
         }],
       })

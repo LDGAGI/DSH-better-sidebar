@@ -17,6 +17,12 @@
 /** The tr dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const tr: Record<string, string> = {
   files: 'Dosyalar',
+  guideDescFiles: 'Çalışma alanı dosya ağacına göz atın; tıklayınca önizleme veya düzenleme açılır',
+  guideDescGit: 'Git değişiklikleri ve bu oturumun dosya değişiklikleri tek sekmede',
+  guideDescSubagent: 'Alt ajan topolojisi ve arka plan görevleri, canlı',
+  guideDescSidechat: 'Bu oturumun bağlamını devralan bağımsız bir yan konu',
+  guideDescTerminal: 'Gerçek bir shell (xterm + pty), yeniden bağlanma destekli',
+  guideDescBrowser: 'Sohbet bağlantılarını devralabilen gömülü tarayıcı',
   changesSessionEmpty: 'Bu oturumda henüz dosya işlemi yok',
   changesRead: 'Okuma',
   changesMdReading: 'Okuma',

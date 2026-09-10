@@ -17,6 +17,12 @@
 /** The th dictionary (key-set-equal to zh, enforced by the type annotation in locales.ts). */
 export const th: Record<string, string> = {
   files: 'ไฟล์',
+  guideDescFiles: 'เรียกดูแผนผังไฟล์ของเวิร์กสเปซ คลิกเพื่อดูตัวอย่างหรือแก้ไข',
+  guideDescGit: 'การเปลี่ยนแปลง Git และไฟล์ที่แก้ในเซสชันนี้ในแท็บเดียว',
+  guideDescSubagent: 'โครงสร้างซับเอเจนต์และงานเบื้องหลังแบบเรียลไทม์',
+  guideDescSidechat: 'เธรดถามต่ออิสระที่สืบทอดบริบทของเซสชันนี้',
+  guideDescTerminal: 'เชลล์จริง (xterm + pty) เชื่อมต่อใหม่ได้',
+  guideDescBrowser: 'เบราว์เซอร์ในตัว รับช่วงลิงก์จากแชทได้',
   changesSessionEmpty: 'ยังไม่มีการดำเนินการไฟล์ในเซสชันนี้',
   changesRead: 'อ่าน',
   changesMdReading: 'อ่าน',

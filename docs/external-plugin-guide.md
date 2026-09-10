@@ -2,7 +2,7 @@
 
 > 面向 **消费插件开发者**：如何让你的插件向 better-sidebar 注册新的侧边栏页面（tab）和文件类型预览器。
 >
-> 适用版本：**v0.4.0+**（`ctx.betterSidebar` 服务）；声明式设置 **v0.4.1+**；text/number 设置行 **v0.11.0+**；badge/生命周期/定向打开/插件设置/版本探测 **v0.12.0+**；select 设置行（`settingSelect`）与外链认领（`urlTarget`）**v0.13.0+**；统一 `@deepseek-ai/cordis` 类型基底 **v0.15.2+**；终端固定（pin）**v0.17.0+**。当前版本 **v0.19.0-alpha.1**（alpha 通道，仅支持 DSH **0.1.5-alpha.2+**；**0.1.5-alpha.1 不再支持**——alpha.1 用户请用 v0.19.0-alpha.0，那是它的最后一版；0.1.2-rc.1 稳定线请用 v0.18.x）。**v0.19.0 移除了自绘右侧面板与自由窗口**（见 §0、§11）。
+> 适用版本：**v0.4.0+**（`ctx.betterSidebar` 服务）；声明式设置 **v0.4.1+**；text/number 设置行 **v0.11.0+**；badge/生命周期/定向打开/插件设置/版本探测 **v0.12.0+**；select 设置行（`settingSelect`）与外链认领（`urlTarget`）**v0.13.0+**；统一 `@deepseek-ai/cordis` 类型基底 **v0.15.2+**；终端固定（pin）**v0.17.0+**。当前版本 **v0.19.0**（正式版，npm `latest`，仅支持 DSH **0.1.5-rc.1+**；**0.1.5-alpha.2 及更早不再支持**——alpha.2 用户请用 v0.19.0-alpha.1，那是它的最后一版；0.1.2-rc.1 稳定线请用 v0.18.x）。**v0.19.0 移除了自绘右侧面板与自由窗口**（见 §0、§11）。
 > 权威代码：`src/client/service.ts`（服务实现）、`src/client/builtins/`（内置 8 tab + 6 viewer 参考实现）、`lib/types/client/service.d.ts`（类型声明）。
 > 仓库开发规则（硬约束 / CI / 发版）见 [AGENTS.md](../AGENTS.md)。
 
@@ -27,7 +27,7 @@
 | 内置类型接管 | 插件的 `editor` 类型以 `extension` 优先级认领 `dsh-resource://file/**`（压过内置 `ui-sidebar-documentpreview` 的 `text` 预览——即 `fallback` 带），并接管内置 `files` 页面 kind（`openTab('files')` 打开插件的文件树）；插件卸载/禁用时内置实现自动复位 |
 | 终端上限 | 终端 tab 的数量上限只统计插件自己底部工作台里的终端；原生栏里的终端不计入 |
 | 底部工作台的开合 | 落到底部工作台的打开一律展开它（新建与聚焦都算），因此 `openTab` 的落点永远可见；开合按钮注册在 DSH 会话头的 utilities 槽（`conversation.session.header.utilities`），不在插件自己的宿主里 |
-| 新建标签页列表 | 每个 tab 类型在原生 guide 里占一行：标题取 `title` + 图标取 `icon`（**无第二行说明**——alpha.2 起原生指南把条目渲染成「图标+标题」胶囊，`description` 已从宿主契约删除，插件随之移除 `TabDescriptor.description` 与 6 个 `guideDesc*` 词条）；`hidden: true` 的类型不占行。插件的 `editor` 类型不再单独占行（它认领的文件资源由 `files` 接管页承载同一视图） |
+| 新建标签页列表 | 每个 tab 类型在原生 guide 里占一行：标题取 `title` + 图标取 `icon`（缺图标时宿主补一个方块占位），说明取可选的 `description`——**宿主只在 guide 列出的条目 ≤ 4 条时渲染说明**（上游 `MAX_DESCRIBED_ENTRIES = 4`），更长的列表整列丢掉所有说明；未声明 `description` 的条目渲染成单行「图标 + 标题」（rc.1 起 `description` 回到宿主契约，但**宿主与插件都没有兜底句**，所以插件恢复字段而不恢复旧的通用句）；`hidden: true` 的类型不占行。插件的 `editor` 类型不再单独占行（它认领的文件资源由 `files` 接管页承载同一视图）。**注意默认组合看不到说明**：插件贡献 6 个 guide 条目（文件 / 文件变动 / 任务管理 / 侧边对话 / 终端 / 浏览器），已超过 4 条上限——要让说明出现，需在插件设置页关掉足够多的 tab 类型把 guide 压到 ≤ 4 条 |
 | 新建面板的种子（alpha.2） | 在新会话打开原生新面板时，宿主从已注册的 guide 条目里播种：恰好 1 个条目 → 直接打开那一页；0 或 ≥2 个条目 → 打开指南。`revealIfOpened` 打开的「页面」在**同一 pane 内**强制去重（已在该 pane 就不再新建）；由已有 tab 地址驱动的打开不受该去重影响 |
 | alpha.2 全局面板（不接入） | 插件**不采用** alpha.2 引入的全局主面板模型——根级 keyed `main` 槽（预留 key `conversation`，由 ui-conversation 注册为 `main.conversation`）、根级 `sidebar.panellist` 列表槽（`SidebarPanelMetadata` / `SidebarPanelIconOwnerProps`）、`ctx.layout.selectPanel(MainPanelId|null)` / `beginNavigation()` / `dispose()`、全局标准 prop `usePanelInfo`，以及改根级并新增会话级 `rightbar.session` 子槽的 `rightbar`——这些只作兼容保留，不向其迁移 |
 | 已移除 | 插件自绘右侧面板（含宽度拖拽 / 新会话默认宽度）与**自由窗口**（`features` 里的 `'floatWindows'` 已删除，v0.18.x 及更早版本的消费者请勿再 gate 该能力）；`openByDefault` / `defaultWidthPercent` / `changesDiffFloat` 三个设置项同步删除（旧文档里的键会被忽略） |
@@ -181,7 +181,15 @@ interface TabDescriptor {
   id: string
   /** 标题（i18n 友好：传字符串或返回字符串的函数） */
   title: string | (() => string)
-  /** 图标：ReactNode 或 (size: number) => ReactNode */
+  /**
+   * 一行说明，渲染在标题下方（DSH 原生右侧栏的新建标签页 / guide 列表）。
+   * **宿主只在 guide 列出的条目 ≤ 4 条时渲染它**（上游 `MAX_DESCRIBED_ENTRIES = 4`），
+   * 更长的列表整列丢掉所有说明——也就是说这是一行「锦上添花」，别把关键信息只放这里。
+   * 不声明就不发 `description` 字段：宿主没有兜底句，插件也不补（通用句在所有页面上
+   * 长得一样，纯噪音），条目就渲染成单行「图标 + 标题」。函数形式在渲染时求值，跟随语言。
+   */
+  description?: string | (() => string)
+  /** 图标：ReactNode 或 (size: number) => ReactNode（不声明时宿主补一个方块占位） */
   icon?: ReactNode | ((size: number) => ReactNode)
   /** + 菜单排序（升序）；默认 100。内置：editor=10, git=20, subagent=30, sidechat=35, terminal=40, browser=50 */
   order?: number

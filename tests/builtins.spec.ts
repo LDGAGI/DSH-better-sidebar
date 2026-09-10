@@ -45,11 +45,9 @@ describe('built-in tab registrations', () => {
   })
 
   it('every visible tab declares a non-empty, mutually distinct title', () => {
-    // The native new-tab list (guide page) is an icon+title capsule at DSH
-    // 0.1.5-alpha.2 — the `description` field is gone from the host contract.
-    // The title is therefore the only per-tab guide text: it must exist, and
-    // no two visible tabs may share one (identical capsules would be
-    // indistinguishable in the guide and the tab strip).
+    // The title is the tab's identity in the native new-tab list (guide
+    // page) and the tab strip: it must exist, and no two visible tabs may
+    // share one (identical capsules would be indistinguishable).
     const { service } = setup()
     const visible = service.getTabs().filter(descriptor => descriptor.hidden !== true)
     expect(visible.length).toBeGreaterThan(0)
@@ -60,6 +58,25 @@ describe('built-in tab registrations', () => {
     const titles = visible.map(descriptor =>
       typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title)
     expect(new Set(titles).size, 'titles must differ per tab').toBe(visible.length)
+  })
+
+  it('every visible tab declares a non-empty, mutually distinct description', () => {
+    // DSH 0.1.5-rc.1 renders `description` under the title while the guide
+    // lists at most 4 entries (a longer list drops every description). With
+    // the host no longer substituting a generic fallback, a tab without one
+    // renders the title alone — so every visible tab declares the real
+    // purpose of its page, and no two may read identically.
+    const { service } = setup()
+    const visible = service.getTabs().filter(descriptor => descriptor.hidden !== true)
+    expect(visible.length).toBeGreaterThan(0)
+    for (const descriptor of visible) {
+      expect(descriptor.description, `${descriptor.id} must declare a description`).toBeDefined()
+      const line = typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description
+      expect(line, `${descriptor.id} description must be non-empty`).toBeTruthy()
+    }
+    const lines = visible.map(descriptor =>
+      typeof descriptor.description === 'function' ? descriptor.description() : descriptor.description)
+    expect(new Set(lines).size, 'descriptions must differ per tab').toBe(visible.length)
   })
 
   it('the changes tab declares no settings of its own (the diff always docks)', () => {

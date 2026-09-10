@@ -15,6 +15,12 @@
 
 export const id: Record<string, string> = {
   files: 'Berkas',
+  guideDescFiles: 'Telusuri pohon berkas workspace; klik untuk pratinjau atau edit',
+  guideDescGit: 'Perubahan Git dan perubahan berkas sesi ini dalam satu tab',
+  guideDescSubagent: 'Topologi subagent dan tugas latar belakang, langsung',
+  guideDescSidechat: 'Utas lanjutan independen yang mewarisi konteks sesi ini',
+  guideDescTerminal: 'Shell sungguhan (xterm + pty), bisa menyambung ulang',
+  guideDescBrowser: 'Peramban tertanam, bisa mengambil alih tautan chat',
   changesSessionEmpty: 'Belum ada operasi file di sesi ini',
   changesRead: 'Baca',
   changesMdReading: 'Baca',

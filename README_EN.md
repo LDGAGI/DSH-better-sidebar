@@ -9,7 +9,7 @@
   <a href="https://github.com/omdsh-dev/DSH-better-sidebar/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/omdsh-dev/DSH-better-sidebar" /></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
   <a href="https://dshfind.com/en/plugins/omdsh-dev/DSH-better-sidebar?ref=badge"><img alt="dshfind" src="https://dshfind.com/api/badge/omdsh-dev/DSH-better-sidebar?lang=en" /></a><br /><br />
-  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.18.1): 0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a>
+  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.19.0): 0.1.5-rc.1+" src="https://img.shields.io/badge/DSH-0.1.5--rc.1%2B-4d6bfe" /></a>
   <a href="https://github.com/topics/dsh-better-sidebar"><img alt="Plugin ecosystem: GitHub topic dsh-better-sidebar" src="https://img.shields.io/badge/plugin%20ecosystem-topic%20dsh--better--sidebar-4d6bfe" /></a><br /><br />
   <img alt="File management" src="https://img.shields.io/badge/-File%20management-4d6bfe" /> <img alt="Edit &amp; preview" src="https://img.shields.io/badge/-Edit%20%26%20preview-4d6bfe" /> <img alt="Embedded browser" src="https://img.shields.io/badge/-Embedded%20browser-4d6bfe" /> <img alt="Real terminal" src="https://img.shields.io/badge/-Real%20terminal-4d6bfe" /> <img alt="Changes" src="https://img.shields.io/badge/-Changes-4d6bfe" /> <img alt="Background tasks" src="https://img.shields.io/badge/-Background%20tasks-4d6bfe" /> <img alt="Side Chat" src="https://img.shields.io/badge/-Side%20Chat-4d6bfe" /> <img alt="Plugin integration" src="https://img.shields.io/badge/-Plugin%20integration-4d6bfe" /><br /><br />
   <b>A dual workbench (right sidebar + bottom panel)</b> that opens its <code>ctx.betterSidebar</code> service to every plugin —<br />
@@ -61,9 +61,9 @@
 **Prerequisites**: DSH installed (`dsh web` boots), Node.js ≥ 20, pnpm ≥ 10.
 
 **Supported DSH versions**:
-<a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.18.1): 0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a>
+<a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.19.0): 0.1.5-rc.1+" src="https://img.shields.io/badge/DSH-0.1.5--rc.1%2B-4d6bfe" /></a>
 
-> 📌 **Stable release**: starting with `v0.18.0` the plugin targets DSH **0.1.2-rc.1+** (npm dist-tag `latest`) and drops 0.1.0-rc.8 ~ 0.1.1-rc.2 — stable-DSH (≤ 0.1.1-rc.2) users should stay pinned to `dsh-better-sidebar@0.17.1` (`@latest` now points at v0.18.0); hosts still on 0.1.2-alpha.x should upgrade DSH first, or keep `dsh-better-sidebar@alpha` (v0.18.0-alpha.0).
+> 📌 **Stable release**: starting with `v0.19.0` the plugin targets DSH **0.1.5-rc.1+** (npm dist-tag `latest`). Hosts still on DSH 0.1.5-alpha.2 should stay pinned to `dsh-better-sidebar@0.19.0-alpha.1`; the 0.1.2-rc.1 stable line keeps using `dsh-better-sidebar@0.18.x`; DSH ≤ 0.1.1-rc.2 should use `dsh-better-sidebar@0.17.1`.
 
 ```sh
 dsh plugin --profile web add dsh-better-sidebar@latest   # first run fails: pnpm 11 blocks node-pty build scripts (the dependency is still written)
@@ -264,7 +264,26 @@ The GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sid
   <a href="https://github.com/user-attachments/assets/946f7028-4967-461e-a750-d1b5056b62d0"><img width="33%" alt="Service API base screenshot" src="https://github.com/user-attachments/assets/946f7028-4967-461e-a750-d1b5056b62d0" /></a>
 </div>
 
-**Supported DSH versions**: <a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.18.1): 0.1.2-rc.1+" src="https://img.shields.io/badge/DSH-0.1.2--rc.1%2B-4d6bfe" /></a> · full release history on the [Releases](https://github.com/omdsh-dev/DSH-better-sidebar/releases) page
+**Supported DSH versions**: <a href="https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions"><img alt="Supported DSH versions (v0.19.0): 0.1.5-rc.1+" src="https://img.shields.io/badge/DSH-0.1.5--rc.1%2B-4d6bfe" /></a> · full release history on the [Releases](https://github.com/omdsh-dev/DSH-better-sidebar/releases) page
+
+### v0.19.0
+
+> 📌 **Stable release** (npm `latest`, no prerelease suffix): supports **DSH 0.1.5-rc.1+** only (peer floor `^0.1.5-rc.1`, CI pins `@deepseek-ai/dsh@0.1.5-rc.1`). Hosts on DSH 0.1.5-alpha.2 should stay on **v0.19.0-alpha.1** (the npm `alpha` tag still points there); the 0.1.2-rc.1 stable line keeps using **v0.18.1**.
+
+**✨ New**
+
+- 📝 **The new-tab list gets an optional description back**: DSH 0.1.5-rc.1 restored `SidebarRightGuideEntry.description` (optional), so the plugin restores `TabDescriptor.description` — each of the six built-in types declares a line again (all six guide rows — Files / Changes / Tasks / Side chat / Terminal / Browser — carry one), and the `guideDesc*` keys return to all 20 dictionaries. **The host's native guide renders descriptions only while the listed entries are ≤ 4** (a longer list drops every description rather than truncating), and the plugin contributes six guide entries by default — so in the default composition no description is rendered; they appear once the reader disables enough tab types (per-type switches live on the plugin's settings page) to bring the guide down to four entries or fewer. An entry that declares none stays a single icon + title line (the plugin ships no generic fallback sentence).
+
+**🐛 Fixes**
+
+- None. The rc.1 delta over alpha.2 is small (373 changed files, overwhelmingly upstream package version bumps, native-sidebar preview UI polish, and test snapshots); apart from the restored description field (plus upstream's `files` type now using its own coloured folder glyph as the guide glyph) nothing needed adapting.
+
+**🧰 CI & internals**
+
+- Baseline moved to **DSH 0.1.5-rc.1+**: peer floor, devDependency pins, the CI mount lane, and `dsh.plugin.json`'s `engines.dsh` all follow (rc.1 is both the `latest` and `next` dist-tag on npm).
+- Explicitly unchanged, no need to re-check: the global main-panel model (the `main` slot / `sidebar.panellist` / `ctx.layout` / root-scoped `rightbar` + `rightbar.session`, still not adopted), the file address grammar (`packages/util/workspace-path` only had its version bumped), the native tab-body host contract (`.paneBody` is still a block scroller with a definite height), the core / agent / session / subagent host APIs, and the `ui-primitives` export surface (only CodeBlock rendering changed).
+- `@deepseek-ai/dsh-client-ui-primitives@0.1.5-rc.1` still declares no `dependencies` while its bundle still bare-imports `anser` / `shiki` / `@shikijs/langs/*` / `mdast-util-*` / `micromark-*` / `katex` — the third-party devDependencies hoisted in the previous release therefore stay, and must not be reverted.
+- Real-host verification (DSH 0.1.5-rc.1 + plugin 0.19.0): `typecheck` / `lint` / `check:consumer-types` green; unit suite **124 files · 1296 passed · 9 skipped**; `pnpm peers check` clean; the mount smoke lane against real rc.1 **7 passed** (including the tab-body fill assertion and the new "descriptions render only at ≤4 guide entries" assertion); on the local 3080 instance the guide still shows six icon+title capsules (6 > 4, so upstream renders no descriptions — upstream also raised the capsule `min-height` from 48px to 56px), clicking `AGENTS.md` in the file tree lands in the plugin editor (CodeMirror mounted), the side-chat composer sits on the pane floor (host box 962px == pane body 962px, composer 8px off the bottom), the bottom workbench's edges coincide with the centre column, and `pageerror` is 0 (the only console noise is the third-party `dsh-tauri-worktree` `/api/dsh-worktree/attach` 500, unrelated to this change).
 
 ### v0.19.0-alpha.1
 
