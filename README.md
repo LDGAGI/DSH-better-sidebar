@@ -268,7 +268,7 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 **✨ 新功能**
 
-- 📝 **新建标签页列表恢复可选说明**：DSH 0.1.5-rc.1 让 `SidebarRightGuideEntry.description` 回归（可选），插件随之恢复 `TabDescriptor.description`，六个内置类型各写回一条说明（原生指南的 文件 / 文件变动 / 任务管理 / 侧边对话 / 终端 / 浏览器 六行都带上它），`guideDesc*` 词条回到 20 份词典。**宿主的原生指南只在列出的条目 ≤ 4 条时渲染说明**（更长的列表是整列丢弃，不是截断），而插件默认贡献 6 个 guide 条目——因此默认组合下说明不渲染，只有在插件设置页关掉足够多的 tab 类型、把 guide 压到 ≤ 4 条时才会出现。未声明说明的条目仍是「图标 + 标题」单行（插件不补通用兜底句）。
+- 📝 **新建标签页列表恢复可选说明**（#613）：DSH 0.1.5-rc.1 让 `SidebarRightGuideEntry.description` 回归（可选），插件随之恢复 `TabDescriptor.description`，六个内置类型各写回一条说明（原生指南的 文件 / 文件变动 / 任务管理 / 侧边对话 / 终端 / 浏览器 六行都带上它），`guideDesc*` 词条回到 20 份词典。**宿主的原生指南只在列出的条目 ≤ 4 条时渲染说明**（更长的列表是整列丢弃，不是截断），而插件默认贡献 6 个 guide 条目——因此默认组合下说明不渲染，只有在插件设置页关掉足够多的 tab 类型、把 guide 压到 ≤ 4 条时才会出现。未声明说明的条目仍是「图标 + 标题」单行（插件不补通用兜底句）。
 
 **🐛 修复**
 
@@ -276,7 +276,7 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 **🧰 CI 与内部**
 
-- 基线推进到 **DSH 0.1.5-rc.1+**：peer 下限、devDependency 钉版、CI 挂载车道与 `dsh.plugin.json` 的 `engines.dsh` 同步（rc.1 在 npm 上同时是 `latest` 与 `next`）。
+- 基线推进到 **DSH 0.1.5-rc.1+**（#613）：peer 下限、devDependency 钉版、CI 挂载车道与 `dsh.plugin.json` 的 `engines.dsh` 同步（rc.1 在 npm 上同时是 `latest` 与 `next`）。
 - 明确未变、不必再核：全局主面板模型（`main` 槽 / `sidebar.panellist` / `ctx.layout` / 根级 `rightbar` + `rightbar.session`，插件仍不接入）、文件地址语法（`packages/util/workspace-path` 只动了版本号）、原生 tab 体宿主契约（`.paneBody` 仍是有确定高度的块级滚动容器）、core / agent / session / subagent 宿主 API 与 `ui-primitives` 导出面（仅 CodeBlock 渲染变化）。
 - `@deepseek-ai/dsh-client-ui-primitives@0.1.5-rc.1` 仍不声明 `dependencies` 而 bundle 仍裸 import `anser` / `shiki` / `@shikijs/langs/*` / `mdast-util-*` / `micromark-*` / `katex`——上一版提升进 devDependencies 的那组包因此保留，不得回退。
 - 真机验证（DSH 0.1.5-rc.1 + 插件 0.19.0）：门禁 `typecheck` / `lint` / `check:consumer-types` 全绿，单测 **124 files · 1296 passed · 9 skipped**，`pnpm peers check` 干净；挂载冒烟对真实 rc.1 **7 passed**（含 tab 体填充断言，以及新增的「指南 ≤4 条时说明才渲染」断言）；本地 3080 实测：guide 六行仍是「图标 + 标题」（6 > 4，说明按上游规则不渲染；上游把胶囊 `min-height` 从 48px 调到 56px），文件树点击 `AGENTS.md` 落到插件编辑器（CodeMirror 就绪），sidechat 输入框贴底（宿主盒 962px == 面板体 962px，composer 底边距 8px），底部工作台与中心列左右边完全重合，`pageerror` 0（控制台仅有第三方 `dsh-tauri-worktree` 的 `/api/dsh-worktree/attach` 500，与本次改动无关）。
