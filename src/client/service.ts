@@ -396,7 +396,13 @@ export interface OpenTabSeed {
   type: string
   /** Overrides the descriptor's title when given (the editor tab shows the file name). */
   title?: string
-  /** A file path (the editor tab's content seed). */
+  /**
+   * A file path. Meaning follows the type: the `editor` kind (the only one
+   * claiming `dsh-resource://file/**`) opens its path seeds as file
+   * resources; every other kind treats the path as component state — it
+   * rides the navigation params onto the tab record's `path` (v0.19.2+; on
+   * v0.19.0/v0.19.1 every path seed was rerouted into a file open).
+   */
   path?: string
   /** A diff reference (the diff tab's content seed). */
   diff?: SidebarTab['diff']
@@ -422,7 +428,7 @@ export interface OpenTabSeed {
 export interface NativeTabParams {
   /** Overrides the descriptor's title for this instance. */
   title?: string
-  /** A file path (the editor window's content seed). */
+  /** A file path (the editor window's content seed; component kinds carry their own). */
   path?: string
   /** A URL the tab navigates to on mount (the browser tab's seed). */
   url?: string
@@ -885,10 +891,15 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
     // ── Native right Sidebar ──────────────────────────────────────────────
     // With the native surface installed, every open except an explicit
-    // bottom-panel one lands there: a file path becomes a resource address
-    // (the native registry routes it to the plugin's file type), a path-less
-    // editor open becomes the `files` page kind, and everything else becomes
-    // a page open carrying the seed as navigation params.
+    // bottom-panel one lands there. The path seed's meaning depends on the
+    // type: `editor` is the only kind registered with
+    // `dsh-resource://file/**` patterns (src/client/native/index.ts), so its
+    // path seeds become resource addresses (the native registry routes the
+    // address back to the editor); a path-less editor open becomes the
+    // `files` page kind. Every OTHER type keeps the page open — its path is
+    // component state, not a file to open — and rides the seed (path
+    // included) as navigation params, which the tab adapter merges onto the
+    // synthetic record's `tab.path` for the registered component.
     if (surface !== undefined && seed.target !== 'bottom') {
       const state = store.getSnapshot().state
       // The descriptor's own factory mints what a view needs beyond the seed:
@@ -911,21 +922,27 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
         ...(seed.diff === undefined ? {} : { diff: seed.diff }),
         ...(seed.meta === undefined && minted?.tab.meta === undefined ? {} : { meta: seed.meta ?? minted?.tab.meta }),
       }
-      if (seed.path !== undefined) {
-        surface.openResource({
-          sessionId: targetSessionId,
-          address: surface.fileAddress(targetSessionId, scope?.cwd, seed.path),
-          revealIfOpened: true,
-        })
-      } else if (seed.type === 'editor') {
-        // The path-less editor window IS the file explorer.
-        surface.openTab({ sessionId: targetSessionId, kind: 'files', params: {}, revealIfOpened: true })
+      if (seed.type === 'editor') {
+        if (seed.path !== undefined) {
+          surface.openResource({
+            sessionId: targetSessionId,
+            address: surface.fileAddress(targetSessionId, scope?.cwd, seed.path),
+            revealIfOpened: true,
+          })
+        } else {
+          // The path-less editor window IS the file explorer.
+          surface.openTab({ sessionId: targetSessionId, kind: 'files', params: {}, revealIfOpened: true })
+        }
       } else {
+        // A component type's path seed stays on the page open (regression
+        // #632: rerouting every path seed into openResource sent the open to
+        // the editor, so the registered component never mounted).
         surface.openTab({
           sessionId: targetSessionId,
           kind: seed.type,
           params: {
             title,
+            ...(seed.path === undefined ? {} : { path: seed.path }),
             ...(seed.url === undefined ? {} : { url: seed.url }),
             ...(seed.diff === undefined ? {} : { diff: seed.diff }),
             ...(synthetic.meta === undefined ? {} : { meta: synthetic.meta }),

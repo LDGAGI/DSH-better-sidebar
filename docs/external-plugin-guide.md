@@ -25,6 +25,7 @@
 | 布局持久化 | 原生栏的布局**只在内存**（刷新后回到折叠默认），插件自己的底部工作台仍然持久化 |
 | 跨会话打开 | 目标会话的右侧栏 store 未挂载时，打开会排队到该会话上屏后重放 |
 | 内置类型接管 | 插件的 `editor` 类型以 `extension` 优先级认领 `dsh-resource://file/**`（压过内置 `ui-sidebar-documentpreview` 的 `text` 预览——即 `fallback` 带），并接管内置 `files` 页面 kind（`openTab('files')` 打开插件的文件树）；插件卸载/禁用时内置实现自动复位 |
+| path 种子的去向（v0.19.2+） | `path` seed 的含义**跟随类型**：只有 `editor`（唯一认领 `dsh-resource://file/**` 的类型）把 path 转成资源地址打开（文件落在编辑器）；**其余类型保留页面型打开**，path 随导航 params 落到合成记录的 `tab.path` 供组件消费——组件型 tab 的 path seed 不会被改道到文件编辑器（v0.19.0/0.19.1 上一切 path seed 都被改道，组件从未挂载，#632） |
 | 终端上限 | 终端 tab 的数量上限只统计插件自己底部工作台里的终端；原生栏里的终端不计入 |
 | 底部工作台的开合 | 落到底部工作台的打开一律展开它（新建与聚焦都算），因此 `openTab` 的落点永远可见；开合按钮注册在 DSH 会话头的 utilities 槽（`conversation.session.header.utilities`），不在插件自己的宿主里 |
 | 新建标签页列表 | 每个 tab 类型在原生 guide 里占一行：标题取 `title` + 图标取 `icon`（缺图标时宿主补一个方块占位），说明取可选的 `description`——**宿主只在 guide 列出的条目 ≤ 4 条时渲染说明**（上游 `MAX_DESCRIBED_ENTRIES = 4`），更长的列表整列丢掉所有说明；未声明 `description` 的条目渲染成单行「图标 + 标题」（rc.1 起 `description` 回到宿主契约，但**宿主与插件都没有兜底句**，所以插件恢复字段而不恢复旧的通用句）；`hidden: true` 的类型不占行。插件的 `editor` 类型不再单独占行（它认领的文件资源由 `files` 接管页承载同一视图）。**注意默认组合看不到说明**：插件贡献 6 个 guide 条目（文件 / 文件变动 / 任务管理 / 侧边对话 / 终端 / 浏览器），已超过 4 条上限——要让说明出现，需在插件设置页关掉足够多的 tab 类型把 guide 压到 ≤ 4 条 |
@@ -619,7 +620,15 @@ interface BetterSidebarService {
   /**
    * 打开一个 tab（+ 菜单和外部触发都用它；走 descriptor.dedupeKey 去重）。
    * title 可选：给出时优先于 descriptor.title（editor 显示文件名）；
-   * 有 createTab 的 descriptor（terminal）会忽略 title/path/id。
+   * 有 createTab 的 descriptor 分落点：底部工作台（target: 'bottom'）由 createTab
+   * 整体铸造 tab，忽略 seed 的 title/path/id（url 种子仍预填新建 tab 的 path）；
+   * 原生右侧栏只忽略 id（原生 tab id 由宿主铸造，seed.id 仅影响 onOpen 收到的
+   * 合成 tab），createTab 铸造的 title/meta 作缺省、seed 字段优先（v0.19.2+ 起
+   * path 也随导航 params 下发，见下）。
+   * path 可选：含义跟随类型——editor（唯一认领 dsh-resource://file/** 的
+   * 类型）把 path 转成资源地址打开（文件落在编辑器）；其余类型 path 是
+   * 组件种子，随导航 params 落到 tab.path（v0.19.2+；0.19.0/0.19.1 把一切
+   * path seed 都改道文件资源打开，组件型 tab 的组件不会挂载，#632）。
    * url 可选：把**新建** tab 的 path 预填为 URL（侧边栏浏览器导航种子）；
    * 聚焦既有 tab 时 url 不会覆写其 path。
    * 被设置禁用的类型是 no-op（console.warn 提示）。注意：available 不拦截 openTab。
@@ -666,6 +675,7 @@ interface BetterSidebarService {
 interface OpenTabSeed {
   type: string
   title?: string
+  /** 文件路径：editor = 打开文件资源；其余类型 = 组件种子（落在 tab.path，v0.19.2+） */
   path?: string
   diff?: SidebarTab['diff']
   id?: string
