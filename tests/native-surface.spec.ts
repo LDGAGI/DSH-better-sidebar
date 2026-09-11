@@ -231,7 +231,7 @@ describe('registerNativeSurface lifecycle (service-driven registration)', () => 
     // not the only one with a blank icon slot.
     const filesGuide = filesType?.guide as Array<{ icon?: unknown; title: () => string; description?: () => string }> | undefined
     expect(filesGuide?.[0]?.icon).toBeDefined()
-    // DSH 0.1.5-rc.1 restored the guide `description` as an optional
+    // DSH 0.1.5-rc.1+ restored the guide `description` as an optional
     // `() => string` (rendered only while the guide lists at most 4
     // entries). The takeover IS the editor's page, so its guide line is the
     // EDITOR descriptor's description (the takeover reuses it, exactly as it

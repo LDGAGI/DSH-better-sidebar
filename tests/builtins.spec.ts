@@ -61,7 +61,7 @@ describe('built-in tab registrations', () => {
   })
 
   it('every visible tab declares a non-empty, mutually distinct description', () => {
-    // DSH 0.1.5-rc.1 renders `description` under the title while the guide
+    // DSH 0.1.5-rc.1+ renders `description` under the title while the guide
     // lists at most 4 entries (a longer list drops every description). With
     // the host no longer substituting a generic fallback, a tab without one
     // renders the title alone — so every visible tab declares the real

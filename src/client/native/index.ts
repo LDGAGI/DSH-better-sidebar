@@ -65,7 +65,7 @@ function titleOf(descriptor: TabDescriptor): string {
 
 /**
  * The guide fields carrying the descriptor's own description line, evaluated
- * fresh for the current locale. DSH 0.1.5-rc.1 renders `description` only
+ * fresh for the current locale. DSH 0.1.5-rc.1+ renders `description` only
  * while the guide lists at most 4 entries, and a descriptor that declares
  * none must reach the host with NO `description` field at all — the host has
  * no fallback of its own, so an empty string would render as a blank second
