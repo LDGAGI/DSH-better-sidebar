@@ -27,7 +27,7 @@ async function waitForTranscript(
   registry: AgentPtyRegistry,
   uuid: string,
   needle: string,
-  timeoutMs = 5000,
+  timeoutMs = 15_000,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -68,7 +68,15 @@ describe('tryResizePty', () => {
   })
 })
 
-describe('AgentPtyRegistry', () => {
+/**
+ * The registry suite really starts a shell per terminal — a PowerShell +
+ * ConPTY pair on Windows, /bin/sh elsewhere. vitest's 5000 ms default is
+ * below a cold PowerShell start on a loaded 2-core CI runner (a sibling spec
+ * measured 12.1 s on 2026-09-10), which is what turned six ci-windows runs
+ * red in the 2026-09-09/10 window. Generous, but still finite: a genuinely
+ * hung spawn fails the case.
+ */
+describe('AgentPtyRegistry', { timeout: 30_000 }, () => {
   it('creates a terminal with a uuid, writes the command to stdin, and lists it', async () => {
     const registry = new AgentPtyRegistry(testShell())
     try {
