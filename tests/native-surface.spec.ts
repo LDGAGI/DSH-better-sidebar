@@ -11,7 +11,7 @@ import { act } from 'react-dom/test-utils'
 import { createNativeTabRecords, NativeTabBody, NativeTabTitle } from '../src/client/native/tab-adapter.tsx'
 import { registerNativeSurface } from '../src/client/native/index.ts'
 import { createBetterSidebarService, type SidebarSurface } from '../src/client/service.ts'
-import { createSidebarStore } from '../src/client/state.ts'
+import { createSidebarStore, type SidebarTab } from '../src/client/state.ts'
 
 const scope = { sessionId: 's1', cwd: '/work' }
 
@@ -117,6 +117,53 @@ describe('service routing into the native surface', () => {
     const { service, calls } = mount()
     service.openTab({ type: 'editor' }, scope)
     expect(calls).toEqual([{ op: 'openTab', sessionId: 's1', kind: 'files', params: {}, revealIfOpened: true }])
+  })
+
+  it('keeps a component type path seed on the page open (no resource reroute)', () => {
+    // Regression #632: a path seed on a component type was rerouted into
+    // openResource, so the editor (the dsh-resource://file/** claimant)
+    // received the open and the registered component never mounted.
+    const { service, calls } = mount()
+    service.registerTab({ id: 'my-plugin:doc', title: 'Doc', component: () => null })
+    service.openTab({ type: 'my-plugin:doc', path: '/work/spec.md', title: 'Spec' }, scope)
+    expect(calls).toEqual([{
+      op: 'openTab',
+      sessionId: 's1',
+      kind: 'my-plugin:doc',
+      params: { title: 'Spec', path: '/work/spec.md' },
+      revealIfOpened: true,
+    }])
+  })
+
+  it('carries the path seed and meta on a multi-instance component open', () => {
+    const { service, calls } = mount()
+    service.registerTab({
+      id: 'my-plugin:console',
+      title: 'Console',
+      createTab: (state) => ({
+        tab: { id: `console:${state.nextTerminal}`, type: 'my-plugin:console', title: 'Console' },
+        patch: { nextTerminal: state.nextTerminal + 1 },
+      }),
+      component: () => null,
+    })
+    service.openTab({ type: 'my-plugin:console', path: '/work/x.md', meta: { k: 1 } }, scope)
+    expect(calls).toEqual([{
+      op: 'openTab',
+      sessionId: 's1',
+      kind: 'my-plugin:console',
+      params: { title: 'Console', path: '/work/x.md', meta: { k: 1 } },
+      // Multi-instance kinds mint a fresh tab per open: no forced reveal.
+      revealIfOpened: false,
+    }])
+  })
+
+  it('reports a component path seed to onOpen on the synthetic tab', () => {
+    const { service } = mount()
+    const seen: Array<SidebarTab | undefined> = []
+    service.registerTab({ id: 'my-plugin:doc', title: 'Doc', onOpen: (tab) => { seen.push(tab) }, component: () => null })
+    service.openTab({ type: 'my-plugin:doc', path: '/work/spec.md' }, scope)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({ type: 'my-plugin:doc', path: '/work/spec.md' })
   })
 
   it('keeps a bottom-targeted open in the plugin layout', () => {
