@@ -8,7 +8,7 @@
  * `browser:<n>` the same way (no quota). The editor IS the files window
  * (the old standalone explorer merged into it).
  */
-import { IconCodeOutline16, IconFolderOpen16, IconNewChatOutline16, IconPanelLeftOutline16, IconThinkOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCodeOutline16, IconFolderOpen16, IconFolderOpenOutline16, IconNewChatOutline16, IconPanelLeftOutline16, IconSparkle16, IconThinkOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../../context-types.ts'
 import { allLeaves, isAgentTabId, type SidebarState } from '../state.ts'
 import { t } from '../locales.ts'
@@ -122,6 +122,28 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
           key: 'workspaceFence',
           title: () => t('settingsFenceTitle'),
           desc: () => t('settingsFenceDesc'),
+        }, {
+          // The file-icon theme: monochrome built-in glyphs (default) vs the
+          // optional colored brand dataset, which is fetched from the lazy
+          // `file-icons` chunk only when picked (see file-icon-theme.ts).
+          key: 'fileIconTheme',
+          type: 'select',
+          title: () => t('settingsFileIconThemeTitle'),
+          desc: () => t('settingsFileIconThemeDesc'),
+          options: [
+            {
+              value: 'builtin',
+              icon: (size: number) => <IconFolderOpenOutline16 size={size} />,
+              title: () => t('settingsFileIconThemeBuiltin'),
+              desc: () => t('settingsFileIconThemeBuiltinDesc'),
+            },
+            {
+              value: 'colored',
+              icon: (size: number) => <IconSparkle16 size={size} />,
+              title: () => t('settingsFileIconThemeColored'),
+              desc: () => t('settingsFileIconThemeColoredDesc'),
+            },
+          ],
         }],
         render: ({ pluginSettings, updatePluginSetting }) => (
           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />

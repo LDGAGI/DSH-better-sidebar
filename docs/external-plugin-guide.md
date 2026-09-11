@@ -591,19 +591,22 @@ interface BetterSidebarService {
   getFileViewers(): readonly FileViewerDescriptor[]
   /** 当前已注册的文件图标描述符快照（v0.19.0+） */
   getFileIcons(): readonly FileIconDescriptor[]
-  /** 按 path 匹配**具体扩展名**注册（priority 降序、注册序；不查 catch-all
-   *  与 folder 保留值）。消费方一般直接用 fileIcon/folderIcon 全链解析器。 */
+  /** 按 path 匹配**具体**注册（priority 降序、注册序）：先 names 文件名，再
+   *  具体扩展名；不查 catch-all 与 folder 保留值。消费方一般直接用
+   *  fileIcon/folderIcon 全链解析器。 */
   matchFileIcon(path: string): FileIconDescriptor | undefined
-  /** 匹配目录行注册（'folder'/'folder-open' 保留扩展名；priority 降序、注册序；
-   *  返回 undefined = 回退内置 VscFolder/VscFolderOpened） */
-  matchFolderIcon(open: boolean): FileIconDescriptor | undefined
+  /** 匹配目录行注册：先按 folderNames 匹配目录名（name 传 basename，可省），
+   *  再按 'folder'/'folder-open' 保留扩展名；priority 降序、注册序；
+   *  返回 undefined = 回退内置 VscFolder/VscFolderOpened */
+  matchFolderIcon(open: boolean, name?: string): FileIconDescriptor | undefined
   /** 文件图标权威解析器（v0.19.0+），完整回退链：
-   *  ① 具体扩展名注册 → ② 内置 glyph（md/媒体/pdf/json/代码/配置/数据库/lock/压缩包）
+   *  ① 具体 names/扩展名注册 → ② 内置 glyph（md/媒体/pdf/json/代码/配置/数据库/lock/压缩包）
    *  → ③ 最优 catch-all 注册（exts: []，即全局默认）→ ④ 通用 VscFile。
    *  任一注册工厂抛错都会被吞（console.error 后跳下一级），永远返回有效 ReactNode。 */
   fileIcon(path: string, size: number): ReactNode
-  /** 目录图标解析器：注册的 'folder'（闭合）/'folder-open'（展开）图标 →
-   *  内置 VscFolder/VscFolderOpened；path 为目录自身路径（主题可按目录变化）。 */
+  /** 目录图标解析器：注册的 folderNames/'folder'（闭合）/'folder-open'（展开）图标 →
+   *  内置 VscFolder/VscFolderOpened；path 为目录自身路径（主题可按目录变化），
+   *  open 会传给工厂，一条注册即可渲染开/合两态。 */
   folderIcon(path: string, open: boolean, size: number): ReactNode
   /** 按 id 查 tab 描述符 */
   getTab(id: string): TabDescriptor | undefined
@@ -680,14 +683,23 @@ interface FileIconDescriptor {
    *  而非文件扩展名：'folder'（闭合目录）、'folder-open'（展开目录）——
    *  它们不会匹配真实文件（名为 x.folder 的文件不受影响）。
    *  [] = catch-all 全局默认：只兜内置 glyph 没认领的扩展名（注册的具体
-   *  扩展名与内置 glyph 永远优先于它）。 */
-  exts: readonly string[]
+   *  names/扩展名与内置 glyph 永远优先于它）。
+   *  **省略** = 完全没有扩展名规则（只有 names 的注册不是 catch-all）。 */
+  exts?: readonly string[]
+  /** 精确**文件名**（basename，大小写不敏感，如 ['package.json','Dockerfile']）——
+   *  图标主题的 fileNames 半边；命中优先于扩展名。省略/[] = 无文件名规则。 */
+  names?: readonly string[]
+  /** 精确**目录名**（basename，大小写不敏感，如 ['node_modules','src']）——
+   *  图标主题的 folderNames 半边；命中优先于保留扩展名，且**只认领列出的
+   *  目录**（要接管所有目录请用 'folder'/'folder-open'）。省略/[] = 无规则。 */
+  folderNames?: readonly string[]
   /** priority 高者胜，缺省 0（同级按注册先后） */
   priority?: number
   /** 尺寸感知的图标工厂（文件树/文件 tab 当前以 size=14 渲染）。
    *  与内置图标（currentColor 单色，遵循皮肤契约）不同，注册图标可以是
-   *  任意 ReactNode——包括彩色图标；颜色在皮肤间的表现由注册方自行负责。 */
-  icon: (path: string, size: number) => ReactNode
+   *  任意 ReactNode——包括彩色图标；颜色在皮肤间的表现由注册方自行负责。
+   *  open：目录行的展开态（文件行为 undefined），一条注册即可渲染开/合两态。 */
+  icon: (path: string, size: number, open?: boolean) => ReactNode
 }
 ```
 
@@ -704,9 +716,23 @@ if (ctx.betterSidebar.features.includes('fileIcons')) {
   )
   ctx.effect(() =>
     ctx.betterSidebar.registerFileIcon({
-      id: 'my-plugin:folders',
-      exts: ['folder'], // 闭合目录行；['folder-open'] 认领展开行——
-      icon: (path, size) => <MyFolderIcon size={size} />, // 开/合图标不同就注册两条
+      id: 'my-plugin:names', // 精确文件名：package.json 与别的 .json 区分开
+      names: ['package.json', 'Dockerfile'],
+      icon: (path, size) => <MyBrandIcon size={size} />,
+    })
+  )
+  ctx.effect(() =>
+    ctx.betterSidebar.registerFileIcon({
+      id: 'my-plugin:folders', // 只认领列出的目录名
+      folderNames: ['node_modules', 'src'],
+      icon: (path, size, open) => open === true ? <MyOpenFolderIcon size={size} /> : <MyFolderIcon size={size} />,
+    })
+  )
+  ctx.effect(() =>
+    ctx.betterSidebar.registerFileIcon({
+      id: 'my-plugin:all-folders', // 接管所有目录行（保留扩展名）
+      exts: ['folder', 'folder-open'],
+      icon: (path, size, open) => open === true ? <MyOpenFolderIcon size={size} /> : <MyFolderIcon size={size} />,
     })
   )
   ctx.effect(() =>
@@ -722,13 +748,23 @@ if (ctx.betterSidebar.features.includes('fileIcons')) {
 **消费表面与回退链**（由本插件内置消费，插件无需自己接线）：
 
 - 文件树文件行 / 编辑器文件 tab（每个文件独立窗口）：`fileIcon(path, size)`
-  ——具体扩展名注册 → 内置 glyph（markdown/媒体/pdf/json/代码/配置/数据库/lock/压缩包）
+  ——具体 `names`/扩展名注册 → 内置 glyph（markdown/媒体/pdf/json/代码/配置/数据库/lock/压缩包）
   → catch-all 全局默认 → 通用 `VscFile`。
-- 文件树目录行（含根行）：`folderIcon(path, open, size)`——`'folder'`/`'folder-open'`
-  注册 → 内置 `VscFolder`/`VscFolderOpened`。
+- 文件树目录行（含根行）：`folderIcon(path, open, size)`——`folderNames` 命中
+  → `'folder'`/`'folder-open'` 保留扩展名 → 内置 `VscFolder`/`VscFolderOpened`。
 
 注册/注销即时生效（文件树与 tab 栏订阅注册表变化自动重渲染）；图标工厂抛错会被吞掉
 （console.error 后跳到回退链下一级），不会空白行。
+
+**内置的可选彩色图标主题**（v0.19.0+，设置页「文件 → 文件图标」）：
+
+- `'builtin'`（默认）＝上面的单色 glyph 映射，零额外加载。
+- `'colored'`＝563 条品牌/通用彩色规则（218 扩展名 + 197 文件名 + 148 目录名），
+  数据在**懒加载 chunk** `lib/client-file-icons.js`（`/sidebar/bundle/file-icons.js`），
+  只有用户选中时才拉取，选中后走 `registerFileIcon` 注册、切回即注销（`src/client/file-icon-theme.ts`）。
+  数据来自 [PR #429](https://github.com/omdsh-dev/DSH-better-sidebar/pull/429)（@fenter）。
+- 因此彩色图标是**皮肤契约 §12 的唯一豁免面**：品牌色是内容而非 chrome，不能走
+  `--dsw-alias-*`；豁免只覆盖这个 chunk（核心图标模块零颜色字面量，由 `tests/theme.spec.ts` 守护）。
 
 **版本与能力探测**（v0.12.0+）：消费插件先查能力再使用新 API，老版本（或旧 DSH）下优雅降级：
 
@@ -858,6 +894,13 @@ ctx.effect(() =>
 ## 12. 皮肤兼容（令牌驱动）
 
 > better-sidebar 所有视觉值消费 DSH 的 `--dsw-alias-*` / `--dsw-font-*` / `--ds-*` 令牌（无硬编码颜色），**不做每皮肤适配**。已与 dsh-web-ui 皮肤中心兼容（10 款皮肤全覆盖 `--dsw-alias-*` 层；`tests/theme.spec.ts` 守护）。你的 tab/viewer 组件遵循同样的令牌规则即可自动兼容全部皮肤。
+>
+> **唯一豁免面**：可选彩色文件图标主题（`fileIconTheme: 'colored'`）在
+> `src/client/chunks/file-icons.tsx` 内硬编码品牌色——品牌色是内容标识而非 chrome，无法
+> 映射到语义令牌；豁免的三个前提是「用户显式开启」「数据只在懒加载 chunk」「核心图标
+> 模块零颜色字面量」（`tests/theme.spec.ts` 的 boundary 用例守护）。插件自己注册的
+> 图标（`registerFileIcon`）颜色由注册方负责，同样不受本节令牌约束，但**不要**把彩色
+> 图标塞进核心 bundle 的常驻渲染路径。
 
 ### 12.1 规则
 

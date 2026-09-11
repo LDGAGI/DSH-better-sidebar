@@ -330,7 +330,8 @@ GitHub topic [`dsh-better-sidebar`](https://github.com/topics/dsh-better-sidebar
 
 ### v0.19.0（未发布）
 
-- 🎨 **文件图标多样化 + 对外图标注册 API（[file-icons.tsx](./src/client/file-icons.tsx)）**：文件树与编辑器文件 tab 不再是单一 `VscFile`——markdown / 图片媒体 / PDF / JSON / 40+ 代码扩展 / 配置 / 数据库 / lock / 压缩包各有专属 glyph（VSCodicons 单色 `currentColor`，遵循皮肤契约），未知扩展回退通用图标。`ctx.betterSidebar` 新增 `registerFileIcon`（`features` 含 `'fileIcons'`）：按扩展名注册自定义图标（彩色 ReactNode 亦可，颜色责任在注册方），`exts: []` 为全局默认（只兜内置 glyph 没认领的扩展，不吞掉内置多样性），保留扩展名 `'folder'` / `'folder-open'` 可换目录行图标；`fileIcon` / `folderIcon` 为权威解析器（完整回退链 + 逐工厂崩溃隔离），注册/注销即时生效。接入示例见[外部插件指南 §7](./docs/external-plugin-guide.md)。
+- 🎨 **可选彩色图标主题**：设置页「文件 → 文件图标」可在**内置单色**与**彩色品牌图标**之间切换——彩色主题含 563 条规则（218 扩展名 + 197 精确文件名 + 148 目录名，如 `.tsx → React`、`package.json → npm`、`node_modules` 着色），数据在**懒加载 chunk**（`lib/client-file-icons.js`）里，只有选中时才下载，默认关闭时启动零开销。数据源自 [#429](https://github.com/omdsh-dev/DSH-better-sidebar/pull/429)（@fenter）。
+- 🎨 **文件图标多样化 + 对外图标注册 API（[file-icons.tsx](./src/client/file-icons.tsx)）**：文件树与编辑器文件 tab 不再是单一 `VscFile`——markdown / 图片媒体 / PDF / JSON / 40+ 代码扩展 / 配置 / 数据库 / lock / 压缩包各有专属 glyph（VSCodicons 单色 `currentColor`，遵循皮肤契约），未知扩展回退通用图标。`ctx.betterSidebar` 新增 `registerFileIcon`（`features` 含 `'fileIcons'`）：按扩展名 / 精确文件名（`names`）/ 目录名（`folderNames`）注册自定义图标（彩色 ReactNode 亦可，颜色责任在注册方），`exts: []` 为全局默认（只兜内置 glyph 没认领的扩展，不吞掉内置多样性），保留扩展名 `'folder'` / `'folder-open'` 可换目录行图标；`fileIcon` / `folderIcon` 为权威解析器（完整回退链 + 逐工厂崩溃隔离），注册/注销即时生效。接入示例见[外部插件指南 §7](./docs/external-plugin-guide.md)。
 
 ### v0.18.1
 

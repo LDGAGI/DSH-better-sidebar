@@ -132,9 +132,11 @@ service.openFile({ sessionId: 's1', cwd: '/p' }, '/p/a.csv', 'Data')
 const icon: FileIconDescriptor = {
   id: 'my-plugin:icons',
   exts: ['csv', FOLDER_EXT, FOLDER_OPEN_EXT],
+  names: ['package.json'],
+  folderNames: ['node_modules'],
   priority: 5,
-  icon: (path: string, size: number) => {
-    void path; void size
+  icon: (path: string, size: number, open?: boolean) => {
+    void path; void size; void open
     return null
   },
 }
@@ -142,6 +144,7 @@ service.registerFileIcon(icon)
 service.getFileIcons()
 service.matchFileIcon('/p/a.csv')
 service.matchFolderIcon(true)
+service.matchFolderIcon(true, 'node_modules')
 service.fileIcon('/p/a.csv', 14)
 service.folderIcon('/p', true, 14)
 

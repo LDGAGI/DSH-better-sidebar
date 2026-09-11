@@ -211,6 +211,11 @@ function chunkBundle(name: string): UserConfig {
     inputOptions: {
       resolve: {
         conditionNames: ['browser', 'import', 'require', 'default'],
+        // The icon chunks import a handful of glyphs from the two react-icons
+        // packs; without this alias the pack's unshakeable CJS entry pulls in
+        // the whole set (6.4 MB for the file-icons chunk). Same reason the
+        // core bundle pins it.
+        ...(name === 'file-icons' ? { alias: REACT_ICONS_ESM_ALIAS } : {}),
       },
     },
     noExternal: (id: string) => (CLIENT_EXTERNALS.includes(id) ? undefined : true),
@@ -324,7 +329,7 @@ function makeCssPlugin(pluginId: string): BuildPlugin {
 }
 
 /** The lazy chunk names (keep in sync with src/bundle-route.ts CHUNK_NAMES). */
-const CHUNKS = ['terminal', 'editor', 'mermaid', 'locale']
+const CHUNKS = ['terminal', 'editor', 'mermaid', 'locale', 'file-icons']
 
 export default [
   {
