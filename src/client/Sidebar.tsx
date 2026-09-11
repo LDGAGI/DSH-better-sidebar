@@ -628,8 +628,17 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     service.openTab({ type: optionId, title, target: 'bottom' }, { sessionId, cwd })
   }
 
-  /** The tab icon from the tab-type registry. */
+  /**
+   * The tab icon from the tab-type registry. An editor tab WITH a file path
+   * (the per-path windows of split mode — `meta.dir` marks folder windows,
+   * which keep the folder glyph) shows the same file icon the tree row shows
+   * (`fileIcon`, feature `fileIcons`); every other tab uses its tab-type
+   * descriptor icon.
+   */
   const tabIconOf = (tab: SidebarTab): ReactNode => {
+    if (tab.type === 'editor' && tab.path !== undefined && (tab.meta as { dir?: boolean } | undefined)?.dir !== true) {
+      return ctx.get('betterSidebar')?.fileIcon(tab.path, 14) ?? null
+    }
     const descriptor = ctx.get('betterSidebar')?.getTab(tab.type)
     if (descriptor === undefined) return null
     return typeof descriptor.icon === 'function' ? descriptor.icon(14) : descriptor.icon
