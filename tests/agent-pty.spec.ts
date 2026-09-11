@@ -12,6 +12,7 @@ import {
   snapshotOf,
   tryResizePty,
 } from '../src/agent-pty.ts'
+import { SidebarError } from '../src/wire.ts'
 
 /**
  * Resolve a shell binary for tests: on Windows use PowerShell (available on
@@ -391,6 +392,107 @@ describe('AgentPtyRegistry', () => {
   it('waitFor throws on an unknown uuid', async () => {
     const registry = new AgentPtyRegistry(testShell())
     await expect(registry.waitFor('nonexistent-uuid', 'foo', 500)).rejects.toThrow()
+  })
+
+  it('waitFor returns skipped when the user skips from the sidebar', async () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      const uuid = registry.create('s1', 'skip-test', 'echo skip-ready', process.cwd(), 80, 24)
+      await waitForTranscript(registry, uuid, 'skip-ready')
+      // waitFor registers its record synchronously (before the first poll
+      // await), so the skip can fire immediately after the call.
+      const waitPromise = registry.waitFor(uuid, 'NEVER_APPEARS_XYZ', 30_000)
+      expect(await registry.skipWait(uuid)).toBe(1)
+      const result = await waitPromise
+      expect(result.kind).toBe('skipped')
+      if (result.kind === 'skipped') expect(result.needle).toBe('NEVER_APPEARS_XYZ')
+      // Idempotent: nothing left to skip once the wait resolved.
+      expect(registry.skipWait(uuid)).toBe(0)
+    } finally {
+      registry.disposeAll()
+    }
+  })
+
+  it('snapshot exposes waiting while a wait is active and clears after it ends', async () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      const uuid = registry.create('s1', 'wait-snap', 'echo snap-ready', process.cwd(), 80, 24)
+      await waitForTranscript(registry, uuid, 'snap-ready')
+      const waitPromise = registry.waitFor(uuid, 'LATER_MARK_9', 30_000)
+      // Registration happens synchronously before waitFor's first await.
+      expect(registry.list('s1')[0]?.waiting?.needle).toBe('LATER_MARK_9')
+      expect(typeof registry.list('s1')[0]?.waiting?.since).toBe('number')
+      expect(registry.skipWait(uuid)).toBe(1)
+      const result = await waitPromise
+      expect(result.kind).toBe('skipped')
+      expect(registry.list('s1')[0]?.waiting).toBeUndefined()
+    } finally {
+      registry.disposeAll()
+    }
+  })
+
+  it('concurrent waits on one uuid: snapshot shows the latest needle, skipWait skips all', async () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      const uuid = registry.create('s1', 'concurrent', '', process.cwd(), 80, 24)
+      // The bare shell never emits either needle → both waits miss the fast
+      // paths and register their records (synchronously, before waitFor's
+      // first poll await — the documented concurrent-wait contract).
+      const first = registry.waitFor(uuid, 'NEVER_A_XYZ', 60_000)
+      const second = registry.waitFor(uuid, 'NEVER_B_XYZ', 60_000)
+      // The banner mirrors the LATEST wait (waits.at(-1)).
+      expect(registry.list('s1')[0]?.waiting?.needle).toBe('NEVER_B_XYZ')
+      expect(typeof registry.list('s1')[0]?.waiting?.since).toBe('number')
+      // One skip transitions EVERY active wait on the terminal.
+      expect(registry.skipWait(uuid)).toBe(2)
+      expect(await first).toEqual({ kind: 'skipped', needle: 'NEVER_A_XYZ' })
+      expect(await second).toEqual({ kind: 'skipped', needle: 'NEVER_B_XYZ' })
+      // Both resolved → the wait state cleared from the snapshot.
+      expect(registry.list('s1')[0]?.waiting).toBeUndefined()
+      // Idempotent: nothing left to skip.
+      expect(registry.skipWait(uuid)).toBe(0)
+    } finally {
+      registry.disposeAll()
+    }
+  })
+
+  it('fires change listeners when a wait starts and ends', async () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      const uuid = registry.create('s1', 'watched-wait', 'echo notify-ready', process.cwd(), 80, 24)
+      await waitForTranscript(registry, uuid, 'notify-ready')
+      let changes = 0
+      const unsubscribe = registry.subscribe(() => { changes += 1 })
+      const waitPromise = registry.waitFor(uuid, 'NEVER_NOTIFY_1', 30_000)
+      const afterStart = changes
+      expect(afterStart).toBeGreaterThanOrEqual(1)
+      expect(await registry.skipWait(uuid)).toBe(1)
+      expect(await waitPromise).toEqual({ kind: 'skipped', needle: 'NEVER_NOTIFY_1' })
+      expect(changes).toBeGreaterThan(afterStart)
+      unsubscribe()
+    } finally {
+      registry.disposeAll()
+    }
+  })
+
+  it('skipWait rejects an unknown uuid with not-found', () => {
+    const registry = new AgentPtyRegistry(testShell())
+    try {
+      expect(() => registry.skipWait('missing-uuid')).toThrow(/not found/)
+      // The HTTP layer maps `status` straight onto the response, so the 404
+      // contract rides this field — assert it, not just the message.
+      let thrown: unknown
+      try {
+        registry.skipWait('missing-uuid')
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toBeInstanceOf(SidebarError)
+      expect((thrown as SidebarError).status).toBe(404)
+      expect((thrown as SidebarError).code).toBe('not-found')
+    } finally {
+      registry.disposeAll()
+    }
   })
 
   it('delivers SIGINT and SIGTSTP by writing control characters (cross-platform)', () => {

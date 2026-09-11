@@ -1895,6 +1895,28 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
   opacity: 0.85;
 }
 
+/* The "Agent 正在等待 {needle}" wait banner: a warn-toned strip above the
+   terminal surface while the model blocks in terminal_wait_for; the needle
+   ellipsizes inline and the full text rides the title tooltip. */
+.terminalWaitBanner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  font: var(--dsw-font-xxxs-11);
+  color: var(--dsw-alias-state-warn-label);
+  background: var(--dsw-alias-state-warn-tertiary);
+}
+
+.terminalWaitNeedle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .boundaryError {
   position: fixed;
   right: 0;
