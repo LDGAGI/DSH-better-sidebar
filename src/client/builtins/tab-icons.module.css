@@ -29,6 +29,8 @@
 }
 
 .terminal {
+  /* The shell chip is ink, not accent — and it is the widest glyph in the set,
+     so it renders a step smaller than its siblings (see tab-icons.tsx). */
   color: var(--dsw-alias-label-primary);
 }
 
