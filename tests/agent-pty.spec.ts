@@ -22,17 +22,37 @@ function testShell(): string {
   return process.platform === 'win32' ? 'powershell.exe' : '/bin/sh'
 }
 
+/**
+ * Wait for a freshly spawned shell to have produced ANY output.
+ *
+ * The alternative — waiting for a string the prepared command prints — ties
+ * the test to shell wording, and waiting for a string the command CONTAINS is
+ * worse: an interactive shell echoes what is written to it (PowerShell does,
+ * POSIX /bin/sh does not), so the needle would already be in the transcript
+ * before the point the test means to exercise. The suites that only need "the
+ * shell is up" therefore wait for output of any kind.
+ * @param registry - the registry under test.
+ * @param uuid - the terminal to watch.
+ * @returns nothing; the caller asserts straight after.
+ */
+async function waitForShellReady(registry: AgentPtyRegistry, uuid: string): Promise<void> {
+  await waitForTranscript(registry, uuid, '', 0, true)
+}
+
 /** Wait for a terminal's transcript to contain a substring (or timeout). */
 async function waitForTranscript(
   registry: AgentPtyRegistry,
   uuid: string,
   needle: string,
   timeoutMs = 15_000,
+  anyOutput = false,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const handle = registry.get(uuid)
-    if (handle !== undefined && handle.transcript.includes(needle)) return handle.transcript
+    if (handle !== undefined) {
+      if (anyOutput ? handle.transcript.length > 0 : handle.transcript.includes(needle)) return handle.transcript
+    }
     await new Promise(resolve => setTimeout(resolve, 50))
   }
   const handle = registry.get(uuid)
@@ -405,8 +425,15 @@ describe('AgentPtyRegistry', { timeout: 30_000 }, () => {
   it('waitFor returns skipped when the user skips from the sidebar', async () => {
     const registry = new AgentPtyRegistry(testShell())
     try {
-      const uuid = registry.create('s1', 'skip-test', 'echo skip-ready', process.cwd(), 80, 24)
-      await waitForTranscript(registry, uuid, 'skip-ready')
+      // A BARE shell, and the wait needle appears nowhere in its preparation:
+      // an interactive shell echoes what is written to it, so a command that
+      // spelled the needle would already have put it in the transcript before
+      // this point — waitFor's fast path would resolve the wait and there
+      // would be nothing left to skip. POSIX /bin/sh does not echo a command
+      // written to a non-tty and hid this for a long time; PowerShell does,
+      // which is why it only ever failed on Windows.
+      const uuid = registry.create('s1', 'skip-test', '', process.cwd(), 80, 24)
+      await waitForShellReady(registry, uuid)
       // waitFor registers its record synchronously (before the first poll
       // await), so the skip can fire immediately after the call.
       const waitPromise = registry.waitFor(uuid, 'NEVER_APPEARS_XYZ', 30_000)
@@ -424,8 +451,10 @@ describe('AgentPtyRegistry', { timeout: 30_000 }, () => {
   it('snapshot exposes waiting while a wait is active and clears after it ends', async () => {
     const registry = new AgentPtyRegistry(testShell())
     try {
-      const uuid = registry.create('s1', 'wait-snap', 'echo snap-ready', process.cwd(), 80, 24)
-      await waitForTranscript(registry, uuid, 'snap-ready')
+      // Same echo hazard as the skip case above: a bare shell puts no needle
+      // in the transcript on its own.
+      const uuid = registry.create('s1', 'wait-snap', '', process.cwd(), 80, 24)
+      await waitForShellReady(registry, uuid)
       const waitPromise = registry.waitFor(uuid, 'LATER_MARK_9', 30_000)
       // Registration happens synchronously before waitFor's first await.
       expect(registry.list('s1')[0]?.waiting?.needle).toBe('LATER_MARK_9')
@@ -467,8 +496,10 @@ describe('AgentPtyRegistry', { timeout: 30_000 }, () => {
   it('fires change listeners when a wait starts and ends', async () => {
     const registry = new AgentPtyRegistry(testShell())
     try {
-      const uuid = registry.create('s1', 'watched-wait', 'echo notify-ready', process.cwd(), 80, 24)
-      await waitForTranscript(registry, uuid, 'notify-ready')
+      // Same echo hazard as the skip case above: a bare shell puts no needle
+      // in the transcript on its own.
+      const uuid = registry.create('s1', 'watched-wait', '', process.cwd(), 80, 24)
+      await waitForShellReady(registry, uuid)
       let changes = 0
       const unsubscribe = registry.subscribe(() => { changes += 1 })
       const waitPromise = registry.waitFor(uuid, 'NEVER_NOTIFY_1', 30_000)
