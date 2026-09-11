@@ -92,16 +92,26 @@ jobs:
         run: pnpm typecheck
       - name: Lint
         run: pnpm lint
-      # `test:windows` caps the fork pool at 2 instead of `pnpm test`'s
-      # unbounded default. Five specs in this suite really start processes
-      # (tests/agent-pty, pty-deps, pty-helpers, install-powershell,
-      # smoke): node-pty's ConPTY helper and a cold `powershell.exe` are
-      # both console-bound, and this 2-core runner made parallel spawning
-      # the amplifier behind every red `Test` step in the 2026-09-09/10
-      # window — six real 5000 ms timeouts (agent-pty `:71`/`:106`,
-      # install-powershell `:105`, the latter measuring 12.1 s) and two
-      # silent vitest worker deaths. The test bodies now carry their own
-      # explicit timeouts as well; this just stops them starving each other.
+      # `test:windows` runs the whole suite in ONE fork (`--maxWorkers=1`),
+      # not `pnpm test`'s unbounded pool. Two distinct Windows-only failures
+      # motivated it, both recorded in docs/plans/2026-09-10-dsh-0.1.5-rc.2-adaptation.md:
+      #
+      #   1. Six red runs were real 5000 ms vitest timeouts in specs that
+      #      really start a process (tests/agent-pty:71/:106,
+      #      tests/install-powershell:105 — a cold powershell.exe start
+      #      measured 12.1 s, tests/git.spec.ts:85 at 9.6 s). The suite now
+      #      declares its own budgets (global testTimeout 15 s, 30 s in the
+      #      two heaviest describes), and serial execution stops the
+      #      process-spawning specs starving each other on a 2-core runner.
+      #   2. Four runs died at teardown with `[vitest-pool]: Worker forks
+      #      emitted error / Worker exited unexpectedly` while reporting
+      #      N-1 of N files passed and zero FAIL lines — a worker recycling
+      #      race, not a test failure. It survived --maxWorkers=2, so the
+      #      lane now recycles nothing at all.
+      #
+      # No retries: they would hide a real regression instead of removing the
+      # race. The cost is wall-clock (the Windows step runs several minutes
+      # against a 30-minute job budget), not signal.
       - name: Test
         run: pnpm test:windows
       - name: Build
