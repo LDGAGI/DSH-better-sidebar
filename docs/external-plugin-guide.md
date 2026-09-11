@@ -748,23 +748,24 @@ if (ctx.betterSidebar.features.includes('fileIcons')) {
 **消费表面与回退链**（由本插件内置消费，插件无需自己接线）：
 
 - 文件树文件行 / 编辑器文件 tab（每个文件独立窗口）：`fileIcon(path, size)`
-  ——具体 `names`/扩展名注册 → 内置 glyph（markdown/媒体/pdf/json/代码/配置/数据库/lock/压缩包）
-  → catch-all 全局默认 → 通用 `VscFile`。
+  ——具体 `names`/扩展名注册 → catch-all 全局默认（`exts: []`）→ **DSH 官方图标**。
 - 文件树目录行（含根行）：`folderIcon(path, open, size)`——`folderNames` 命中
-  → `'folder'`/`'folder-open'` 保留扩展名 → 内置 `VscFolder`/`VscFolderOpened`。
+  → `'folder'`/`'folder-open'` 保留扩展名 → DSH 官方的文件夹图形。
 
 注册/注销即时生效（文件树与 tab 栏订阅注册表变化自动重渲染）；图标工厂抛错会被吞掉
 （console.error 后跳到回退链下一级），不会空白行。
 
-**内置的可选彩色图标主题**（v0.19.0+，设置页「文件 → 文件图标」）：
+**内置图标 = DSH 官方图形**（v0.19.0+，插件不含任何图标数据）：
 
-- `'builtin'`（默认）＝上面的单色 glyph 映射，零额外加载。
-- `'colored'`＝563 条品牌/通用彩色规则（218 扩展名 + 197 文件名 + 148 目录名），
-  数据在**懒加载 chunk** `lib/client-file-icons.js`（`/sidebar/bundle/file-icons.js`），
-  只有用户选中时才拉取，选中后走 `registerFileIcon` 注册、切回即注销（`src/client/file-icon-theme.ts`）。
-  数据来自 [PR #429](https://github.com/omdsh-dev/DSH-better-sidebar/pull/429)（@fenter）。
-- 因此彩色图标是**皮肤契约 §12 的唯一豁免面**：品牌色是内容而非 chrome，不能走
-  `--dsw-alias-*`；豁免只覆盖这个 chunk（核心图标模块零颜色字面量，由 `tests/theme.spec.ts` 守护）。
+- 回退链末端是 `FileTypeIcon` / `CodeFileIcon`（`@deepseek-ai/dsh-client-ui-primitives`，
+  DSH 0.1.5-rc.2+）：48 个代码/配置类目的官方全彩图形 + markdown / 图片 / PDF / Word /
+  Excel / PPT / 视频 / 文件夹 / 通用文档的类目色板图形，分类器是宿主的
+  `classifyFileType`（精确文件名 → 前缀/后缀 → 项目上下文 → 扩展名）。本插件因此**没有**
+  自己的扩展名表、**没有**图标 chunk、**没有**图标主题开关——彩色是唯一形态。
+- **语义后果（重要）**：宿主分类器覆盖任意路径，所以「插件自己已经能画这个扩展名」不再是
+  拦住 catch-all 的理由——**注册了 `exts: []` 的插件会接管全部未具体命中的行**（优先级降序、
+  同优先级按注册序）。只想补几个扩展名就照常用 `exts`/`names`，别用 catch-all 兜底。
+- 插件自己注册的图标颜色由注册方负责（见 §12）：品牌色是内容标识而非 chrome。
 
 **版本与能力探测**（v0.12.0+）：消费插件先查能力再使用新 API，老版本（或旧 DSH）下优雅降级：
 
@@ -895,12 +896,12 @@ ctx.effect(() =>
 
 > better-sidebar 所有视觉值消费 DSH 的 `--dsw-alias-*` / `--dsw-font-*` / `--ds-*` 令牌（无硬编码颜色），**不做每皮肤适配**。已与 dsh-web-ui 皮肤中心兼容（10 款皮肤全覆盖 `--dsw-alias-*` 层；`tests/theme.spec.ts` 守护）。你的 tab/viewer 组件遵循同样的令牌规则即可自动兼容全部皮肤。
 >
-> **唯一豁免面**：可选彩色文件图标主题（`fileIconTheme: 'colored'`）在
-> `src/client/chunks/file-icons.tsx` 内硬编码品牌色——品牌色是内容标识而非 chrome，无法
-> 映射到语义令牌；豁免的三个前提是「用户显式开启」「数据只在懒加载 chunk」「核心图标
-> 模块零颜色字面量」（`tests/theme.spec.ts` 的 boundary 用例守护）。插件自己注册的
-> 图标（`registerFileIcon`）颜色由注册方负责，同样不受本节令牌约束，但**不要**把彩色
-> 图标塞进核心 bundle 的常驻渲染路径。
+> **没有任何豁免面**：文件与文件夹图标是 **DSH 官方的 `FileTypeIcon` 图形**（宿主自己
+> 的调色板，插件不画像素也不存数据），插件画的每个 glyph（含内置 tab 的彩色图标）颜色
+> 都来自 `--dsw-alias-*`——`tests/theme.spec.ts` 同时守护「图标模块零颜色字面量」与
+> 「样式表里每条 `color` 都解析到令牌」。插件自己注册的图标（`registerFileIcon`）颜色由
+> 注册方负责，不受本节令牌约束，但**不要**把彩色图标数据塞进核心 bundle 的常驻渲染路径
+> （要按需加载就照 `src/client/chunk-loader.ts` 的懒加载 chunk 走）。
 
 ### 12.1 规则
 
