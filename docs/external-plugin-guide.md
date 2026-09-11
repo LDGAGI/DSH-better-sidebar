@@ -620,7 +620,11 @@ interface BetterSidebarService {
   /**
    * 打开一个 tab（+ 菜单和外部触发都用它；走 descriptor.dedupeKey 去重）。
    * title 可选：给出时优先于 descriptor.title（editor 显示文件名）；
-   * 有 createTab 的 descriptor（terminal）会忽略 title/path/id。
+   * 有 createTab 的 descriptor 分落点：底部工作台（target: 'bottom'）由 createTab
+   * 整体铸造 tab，忽略 seed 的 title/path/id（url 种子仍预填新建 tab 的 path）；
+   * 原生右侧栏只忽略 id（原生 tab id 由宿主铸造，seed.id 仅影响 onOpen 收到的
+   * 合成 tab），createTab 铸造的 title/meta 作缺省、seed 字段优先（v0.19.2+ 起
+   * path 也随导航 params 下发，见下）。
    * path 可选：含义跟随类型——editor（唯一认领 dsh-resource://file/** 的
    * 类型）把 path 转成资源地址打开（文件落在编辑器）；其余类型 path 是
    * 组件种子，随导航 params 落到 tab.path（v0.19.2+；0.19.0/0.19.1 把一切
