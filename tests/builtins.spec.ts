@@ -257,15 +257,14 @@ describe('built-in tab registrations', () => {
     expect(glyphOf('git')).toBe(VscGitCommit)
     expect(glyphOf('sidechat')).toBe(VscCommentDiscussion)
     expect(glyphOf('browser')).toBe(VscGlobe)
-    // The terminal glyph is the widest in the set: it renders a step down from
-    // the strip's size and keeps a hairline outline so it matches the plugin's
-    // own drawn chrome instead of reading as a heavy filled block.
+    // The terminal glyph is the widest in the set, so it renders a step down
+    // from the strip's size. No outline: the glyphs stay exactly as the icon
+    // set draws them, only tinted through the wrapper's token.
     const wrapper = iconOf('terminal') as ReactElement<{ children?: ReactElement }>
     const terminal = wrapper.props.children as ReactElement<{ size?: number; style?: Record<string, unknown> }>
     expect(terminal.type).toBe(VscTerminal)
     expect(terminal.props.size).toBeLessThan(14)
-    expect(terminal.props.style?.strokeWidth).toBe(1)
-    expect(terminal.props.style?.vectorEffect).toBe('non-scaling-stroke')
+    expect(terminal.props.style).toBeUndefined()
   })
 })
 
