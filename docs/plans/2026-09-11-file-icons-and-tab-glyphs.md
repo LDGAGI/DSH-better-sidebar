@@ -74,7 +74,8 @@
 | 反馈 | 结论与改动 |
 |---|---|
 | 「任务管理」图标不对——该页是 subagent + 后台 jobs，不是 todo | `VscTasklist`（清单）→ **`VscLayers`**（多层堆叠 = 后台在跑的工作）。`tests/builtins.spec.ts` 用 glyph 身份把这条读法钉住 |
-| 终端图标「非常怪」 | 根因是**观感权重**而非形状：`VscTerminal` 是整套里最宽的实心块，而插件其余图标都是自己画的 1.5px 描边图形。改为一档更小（`0.85 × size`，下限 10px）+ `stroke: currentColor` 发丝描边（`strokeWidth: 1` 配 `non-scaling-stroke`，跨 16/24 单位 viewBox 都是一像素；`paint-order: stroke` 让描边骑在填充边缘而不是把形状撑胖）。同一处理应用到全部彩色 tab glyph，保持成套一致 |
+| 终端图标「非常怪」 | 根因是**观感权重**：`VscTerminal` 是整套里最宽的实心矩形，在 14px 下比邻座重。**只缩小一档**（`0.85 × size`，下限 10px）——形状与绘制方式保持图标集原样 |
+| 追加反馈：上一版给全部 tab glyph 加的 `currentColor` 发丝描边（`strokeWidth: 1` + `non-scaling-stroke`）「太粗」 | **整体回退**：不描边，glyph 只用包裹类的令牌着色。“描边”是我对「怪」的过度解读，反馈的本意只是终端尺寸。`tests/builtins.spec.ts` 现在同时钉住「终端尺寸更小」与「glyph 不带 style 覆盖」，防止描边再溜回来 |
 
 ### 真实 CI（已收敛）
 
