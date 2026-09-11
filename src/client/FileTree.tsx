@@ -149,7 +149,7 @@ export function FileTree(props: {
   busy: boolean
   /**
    * The sidebar registry service: when present, externally registered file
-   * icons (`registerFileIcon`) outrank the built-in glyph map on file rows.
+   * icons (`registerFileIcon`) outrank the host's file-type artwork on file rows.
    * Absent → the built-ins alone (the host always passes it today).
    */
   service?: BetterSidebarService

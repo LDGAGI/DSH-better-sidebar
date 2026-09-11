@@ -1000,7 +1000,6 @@ describe('side card settings routes', () => {
         terminalFontSize: 13,
         editorExplorer: false,
         workspaceFence: true,
-        fileIconTheme: 'builtin',
         terminalShell: '',
         terminalShellArgs: '',
         titleBarCompat: false,

@@ -162,7 +162,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
       ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
         name: 'sidebar.right.pane.tab.title',
         key: id,
-        inject: () => ({ records }),
+        inject: () => ({ records, service, descriptorId: injected.descriptorId }),
       }, NativeTabTitle)),
     ]
 

@@ -27,7 +27,7 @@ import {
   type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab, type TabType,
 } from './state.ts'
 import { baseName, extOf } from './paths.ts'
-import { builtinFileIconOf, builtinFolderIcon, fallbackFileIcon } from './file-icons.tsx'
+import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
 import type { SessionScope } from './api.ts'
 import type { SidebarPrefs } from '../prefs-shared.ts'
 
@@ -491,9 +491,11 @@ export interface BetterSidebarService {
    * the whole chain with per-factory crash isolation:
    * 1. a specific registered name or extension (priority desc, registration
    *    order),
-   * 2. the built-in monochrome glyph map (md/media/pdf/json/code/...),
-   * 3. the best registered global default (`exts: []`, priority desc),
-   * 4. the generic `VscFile`.
+   * 2. the best registered global default (`exts: []`, priority desc) — an
+   *    external plugin that registers a catch-all owns every row the host's
+   *    classifier would otherwise draw,
+   * 3. the host's own `FileTypeIcon` artwork (feature `fileIcons`, DSH's
+   *    classifier and glyphs — the plugin ships no extension table).
    * A throwing factory is logged (console.error) and skipped — the caller
    * always gets a valid ReactNode.
    */
@@ -799,29 +801,27 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   }
 
   // The authoritative file-icon chain (see the interface doc): specific name
-  // or extension registration → built-in glyph → best catch-all → stock
-  // VscFile. The catch-all ranks by priority desc then registration order
-  // (first wins); an unclaimed extension reaching it is exactly "nothing
-  // specified falls back to the (registered or stock) default".
+  // or extension registration → registered catch-all → the host's own
+  // file-type artwork. The catch-all ranks by priority desc then registration
+  // order (first wins), which is what lets an external plugin own "every
+  // extension I did not name" without also owning the ones DSH draws.
   const fileIcon = (path: string, size: number): ReactNode => {
     const specific = matchFileIcon(path)
     if (specific !== undefined) {
       const icon = safeIcon(specific, path, size)
       if (icon !== undefined) return icon
     }
-    const builtin = builtinFileIconOf(path)
-    if (builtin !== undefined) return builtin(size)
     for (const d of rankedFileIcons()) {
       if (d.exts !== undefined && d.exts.length === 0) {
         const icon = safeIcon(d, path, size)
         if (icon !== undefined) return icon
       }
     }
-    return fallbackFileIcon(size)
+    return builtinFileIcon(path, size)
   }
 
   // Directory rows: registered folderNames/folder/folder-open icon, else the
-  // built-in VSCodicons glyphs. The row's path feeds the factory (a theme may
+  // host's folder glyph. The row's path feeds the factory (a registration may
   // vary icons per directory) and `open` lets one descriptor render both
   // states.
   const folderIcon = (path: string, open: boolean, size: number): ReactNode => {

@@ -74,9 +74,6 @@ export function parsePrefs(value: unknown): SidebarPrefs {
     workspaceFence: typeof record.workspaceFence === 'boolean'
       ? record.workspaceFence
       : SIDEBAR_PREFS_DEFAULTS.workspaceFence,
-    fileIconTheme: typeof record.fileIconTheme === 'string'
-      ? record.fileIconTheme
-      : SIDEBAR_PREFS_DEFAULTS.fileIconTheme,
     // The title-bar scheme (auto | web | preset | custom). The schema
     // declares the field WITHOUT a default, so documents written by older
     // plugin versions resolve without it — migrate from the legacy fields:

@@ -80,14 +80,6 @@ export interface SidebarPrefs {
    */
   workspaceFence: boolean
   /**
-   * The file-icon theme (v0.19.0+). `'builtin'` (default) is the monochrome
-   * VSCodicons glyph map every surface already uses; `'colored'` swaps in the
-   * optional brand-colored dataset, fetched from the lazy `file-icons` chunk
-   * only when selected (an unknown id behaves as `'builtin'`). The switch
-   * lives under the files tab's gear in the Side card settings.
-   */
-  fileIconTheme: string
-  /**
    * The shell the UI and agent terminals spawn (absolute path or bare
    * executable name). Empty (default) keeps the legacy resolution order:
    * `cordis.patch.yml` `config.shell`, then `$SHELL` / login shell /
@@ -256,7 +248,6 @@ export const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs = {
   terminalFontSize: TERMINAL_FONT_SIZE_DEFAULT,
   editorExplorer: false,
   workspaceFence: true,
-  fileIconTheme: 'builtin',
   terminalShell: '',
   terminalShellArgs: '',
   titleBarScheme: 'auto',

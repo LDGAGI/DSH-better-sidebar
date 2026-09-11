@@ -1,13 +1,13 @@
 /**
  * Tests for the file-icon feature: the external registration API
  * (registerFileIcon — registry lifecycle, reserved folder exts, and the
- * authoritative fileIcon/folderIcon resolver chains) and the built-in
- * per-extension glyph map (extension normalization, group hits, and the
- * generic VscFile fallback).
+ * authoritative fileIcon/folderIcon resolver chains) and the built-in glyphs,
+ * which are DSH's own `FileTypeIcon` artwork rather than a plugin-owned
+ * extension table (see src/client/file-icons.tsx).
  */
 import { describe, it, expect, vi } from 'vitest'
 import type { ReactElement, ReactNode } from 'react'
-import { VscFile, VscFileCode, VscFileMedia, VscFolder, VscFolderOpened, VscJson, VscMarkdown } from 'react-icons/vsc'
+import { FileTypeIcon } from '@deepseek-ai/dsh-client-ui-primitives'
 
 // Mock browser globals (SidebarStore.reduce → schedulePersist uses window.setTimeout)
 const g = globalThis as Record<string, unknown>
@@ -100,19 +100,23 @@ describe('file icon registration API', () => {
   })
 })
 
-describe('fileIcon resolver chain (specific → builtin → catch-all → VscFile)', () => {
+describe('fileIcon resolver chain (specific → catch-all → the host artwork)', () => {
   it('a specific registration beats the builtin glyph', () => {
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'md', exts: ['md'], icon: marker })
     expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe('span')
   })
 
-  it('the builtin glyph beats a registered catch-all (the default only claims unclaimed extensions)', () => {
+  it('a registered catch-all claims every row the plugin itself would draw', () => {
+    // The plugin ships no extension table any more: the host's classifier
+    // covers every path, so "the built-in set already claims this one" is no
+    // longer a reason to keep a catch-all out. A catch-all therefore wins the
+    // fallback position outright, and an unregistered tree keeps the host's
+    // artwork (the next case).
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'all', exts: [], icon: marker })
-    expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(VscMarkdown)
-    expect(glyphOf(service.fileIcon('/w/logo.png', 14))).toBe(VscFileMedia)
-    // An extension the builtin map does not cover reaches the catch-all.
+    expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe('span')
+    expect(glyphOf(service.fileIcon('/w/logo.png', 14))).toBe('span')
     expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe('span')
   })
 
@@ -133,18 +137,18 @@ describe('fileIcon resolver chain (specific → builtin → catch-all → VscFil
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'md-decline', exts: ['md'], icon: () => undefined })
     // The specific registration declined → the built-in glyph claims it.
-    expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(VscMarkdown)
+    expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(FileTypeIcon)
     service.registerFileIcon({ id: 'all-decline', exts: [], priority: 10, icon: () => undefined })
     service.registerFileIcon({ id: 'all-take', exts: [], icon: marker })
     // The declining catch-all is skipped, the next one takes the row.
     expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe('span')
   })
 
-  it('with no registration at all the chain is the built-in one', () => {
+  it('with no registration at all the chain is the host’s artwork', () => {
     const service = createBetterSidebarService(createSidebarStore())
-    expect(glyphOf(service.fileIcon('/w/pkg.json', 14))).toBe(VscJson)
-    expect(glyphOf(service.fileIcon('/w/main.ts', 14))).toBe(VscFileCode)
-    expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe(VscFile)
+    expect(glyphOf(service.fileIcon('/w/pkg.json', 14))).toBe(FileTypeIcon)
+    expect(glyphOf(service.fileIcon('/w/main.ts', 14))).toBe(FileTypeIcon)
+    expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe(FileTypeIcon)
   })
 
   it('a throwing factory is skipped at every level (console.error, next link wins)', () => {
@@ -153,10 +157,10 @@ describe('fileIcon resolver chain (specific → builtin → catch-all → VscFil
       const service = createBetterSidebarService(createSidebarStore())
       service.registerFileIcon({ id: 'boom-md', exts: ['md'], icon: () => { throw new Error('boom') } })
       // Specific throws → falls to the builtin glyph.
-      expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(VscMarkdown)
+      expect(glyphOf(service.fileIcon('/w/README.md', 14))).toBe(FileTypeIcon)
       service.registerFileIcon({ id: 'boom-all', exts: [], priority: 10, icon: () => { throw new Error('boom') } })
-      // Catch-all throws → falls to the stock VscFile.
-      expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe(VscFile)
+      // Catch-all throws → falls to the host's file-type artwork.
+      expect(glyphOf(service.fileIcon('/w/Makefile', 14))).toBe(FileTypeIcon)
       expect(errorSpy).toHaveBeenCalled()
     } finally {
       errorSpy.mockRestore()
@@ -167,8 +171,8 @@ describe('fileIcon resolver chain (specific → builtin → catch-all → VscFil
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'folders', exts: ['folder', 'folder-open'], icon: marker })
     expect(service.matchFileIcon('/w/x.folder')).toBeUndefined()
-    // The real file falls through to the stock default, not the folder icon.
-    expect(glyphOf(service.fileIcon('/w/x.folder', 14))).toBe(VscFile)
+    // The real file falls through to the host's artwork, not the folder glyph.
+    expect(glyphOf(service.fileIcon('/w/x.folder', 14))).toBe(FileTypeIcon)
   })
 })
 
@@ -203,7 +207,7 @@ describe('name matching (names / folderNames — the icon-theme half)', () => {
     const solo = createBetterSidebarService(createSidebarStore())
     solo.registerFileIcon({ id: 'named', folderNames: ['src'], icon: marker })
     expect(solo.matchFolderIcon(false, 'lib')).toBeUndefined()
-    expect(glyphOf(solo.folderIcon('/w/lib', false, 14))).toBe(VscFolder)
+    expect(glyphOf(solo.folderIcon('/w/lib', false, 14))).toBe(FileTypeIcon)
   })
 
   it('the folder factory receives the open flag so one descriptor renders both states', () => {
@@ -223,13 +227,13 @@ describe('name matching (names / folderNames — the icon-theme half)', () => {
   })
 })
 
-describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)', () => {
+describe('folderIcon resolver (registered folder/folder-open → the host folder glyph)', () => {
   it('unregistered directories show the builtin glyphs', () => {
     const service = createBetterSidebarService(createSidebarStore())
-    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(VscFolder)
-    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe(VscFolderOpened)
-    expect(glyphOf(builtinFolderIcon(false, 14))).toBe(VscFolder)
-    expect(glyphOf(builtinFolderIcon(true, 14))).toBe(VscFolderOpened)
+    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(FileTypeIcon)
+    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe(FileTypeIcon)
+    expect(glyphOf(builtinFolderIcon(false, 14))).toBe(FileTypeIcon)
+    expect(glyphOf(builtinFolderIcon(true, 14))).toBe(FileTypeIcon)
   })
 
   it('folder / folder-open registrations replace the dir glyphs (priority desc)', () => {
@@ -237,7 +241,7 @@ describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)
     service.registerFileIcon({ id: 'closed', exts: ['folder'], icon: marker })
     expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe('span')
     // The OPEN row is a separate reserved ext — still the builtin here.
-    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe(VscFolderOpened)
+    expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe(FileTypeIcon)
     service.registerFileIcon({ id: 'open', exts: ['folder-open'], icon: markerB })
     expect(glyphOf(service.folderIcon('/w/src', true, 14))).toBe('b')
     service.registerFileIcon({ id: 'closed-hi', exts: ['folder'], priority: 3, icon: markerB })
@@ -248,7 +252,7 @@ describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)
   it('a catch-all registration never claims a directory', () => {
     const service = createBetterSidebarService(createSidebarStore())
     service.registerFileIcon({ id: 'all', exts: [], icon: marker })
-    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(VscFolder)
+    expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(FileTypeIcon)
   })
 
   it('a throwing folder factory falls back to the builtin glyph', () => {
@@ -256,7 +260,7 @@ describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)
     try {
       const service = createBetterSidebarService(createSidebarStore())
       service.registerFileIcon({ id: 'boom', exts: ['folder'], icon: () => { throw new Error('boom') } })
-      expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(VscFolder)
+      expect(glyphOf(service.folderIcon('/w/src', false, 14))).toBe(FileTypeIcon)
       expect(errorSpy).toHaveBeenCalled()
     } finally {
       errorSpy.mockRestore()
@@ -264,19 +268,25 @@ describe('folderIcon resolver (registered folder/folder-open → builtin glyphs)
   })
 })
 
-describe('built-in glyph map (builtinFileIcon)', () => {
-  it('maps representative extensions to their group glyph', () => {
-    expect(glyphOf(builtinFileIcon('/w/README.md', 14))).toBe(VscMarkdown)
-    expect(glyphOf(builtinFileIcon('/w/logo.png', 14))).toBe(VscFileMedia)
-    expect(glyphOf(builtinFileIcon('/w/logo.SVG', 14))).toBe(VscFileMedia)
-    expect(glyphOf(builtinFileIcon('/w/pkg.json', 14))).toBe(VscJson)
-    expect(glyphOf(builtinFileIcon('/w/main.ts', 14))).toBe(VscFileCode)
-    expect(glyphOf(builtinFileIcon('/w/main.py', 14))).toBe(VscFileCode)
+describe('built-in glyphs are the host’s own artwork', () => {
+  it('every path goes through the host FileTypeIcon (it classifies, the host draws)', () => {
+    for (const path of ['/w/README.md', '/w/logo.png', '/w/main.ts', '/w/pkg.json', '/w/data.xyzunknown', '/w/Makefile']) {
+      expect(glyphOf(builtinFileIcon(path, 14)), path).toBe(FileTypeIcon)
+    }
+    expect(glyphOf(fallbackFileIcon(14))).toBe(FileTypeIcon)
   })
 
-  it('falls back to the generic VscFile for unknown extensions and paths without one', () => {
-    expect(glyphOf(builtinFileIcon('/w/data.xyzunknown', 14))).toBe(VscFile)
-    expect(glyphOf(builtinFileIcon('/w/Makefile', 14))).toBe(VscFile)
-    expect(glyphOf(fallbackFileIcon(14))).toBe(VscFile)
+  it('hands the row’s path and size to the host classifier', () => {
+    const props = (builtinFileIcon('/w/main.ts', 14) as ReactElement).props as { path: string; size: number }
+    expect(props.path).toBe('/w/main.ts')
+    expect(props.size).toBe(14)
+  })
+
+  it('renders the host folder category for directories', () => {
+    const props = (builtinFolderIcon(false, 14) as ReactElement).props as { kind: string; size: number }
+    expect(props.kind).toBe('folder')
+    expect(props.size).toBe(14)
+    // Both expansion states resolve to the host's folder drawing.
+    expect(glyphOf(builtinFolderIcon(true, 14))).toBe(FileTypeIcon)
   })
 })
