@@ -65,14 +65,24 @@
 **已执行（macOS arm64，DSH 0.1.5-rc.2 钉版）**
 
 - `pnpm typecheck` / `pnpm lint` / `pnpm check:consumer-types` 全绿；
-- `pnpm test` = **127 files / 1342 passed / 9 skipped**（v0.19.1 基线 126/1312 + 合并与新增的 30 例，失败数 0）；
+- `pnpm test` = **127 files / 1343 passed / 9 skipped**（v0.19.1 基线 126/1312 + 合并与新增的 31 例，失败数 0；返工后 +1 例 glyph 身份断言）；
 - `pnpm build`：`lib/client.js` **0.85 → 0.86 MB**（+10 kB），**没有** `lib/client-file-icons.js`；核心 bundle 内不含图标数据（只有 6 个被引用的 glyph 组件）；
 - 真机挂载冒烟（`DSH_CMD` 指向 `@deepseek-ai/dsh@0.1.5-rc.2`）：`pnpm test:mount` **7 passed**（含 guide 深扫、tab 体填充断言、mermaid/README 预览、sidechat 路由），`pnpm test:mount:aggregate` 通过。
 
+### 真机反馈的两处返工（用户人工验证后）
+
+| 反馈 | 结论与改动 |
+|---|---|
+| 「任务管理」图标不对——该页是 subagent + 后台 jobs，不是 todo | `VscTasklist`（清单）→ **`VscLayers`**（多层堆叠 = 后台在跑的工作）。`tests/builtins.spec.ts` 用 glyph 身份把这条读法钉住 |
+| 终端图标「非常怪」 | 根因是**观感权重**而非形状：`VscTerminal` 是整套里最宽的实心块，而插件其余图标都是自己画的 1.5px 描边图形。改为一档更小（`0.85 × size`，下限 10px）+ `stroke: currentColor` 发丝描边（`strokeWidth: 1` 配 `non-scaling-stroke`，跨 16/24 单位 viewBox 都是一像素；`paint-order: stroke` 让描边骑在填充边缘而不是把形状撑胖）。同一处理应用到全部彩色 tab glyph，保持成套一致 |
+
+### 真实 CI（已收敛）
+
+`ci` / `plugin-mount` 每轮都绿；`ci-windows` 的 worker 回收竞态在 `--maxWorkers=1`（单 fork、零回收）下**连续三次全绿**：run [34575721734](https://github.com/omdsh-dev/DSH-better-sidebar/actions/runs/34575721734)、[34576146970](https://github.com/omdsh-dev/DSH-better-sidebar/actions/runs/34576146970)、[34576493202](https://github.com/omdsh-dev/DSH-better-sidebar/actions/runs/34576493202)，均 **127 files / 0 errors**。两轮迭代（`--maxWorkers=2` 被真实结果证否）的取证见 [rc.2 计划 §B](./2026-09-10-dsh-0.1.5-rc.2-adaptation.md)。
+
 **待验证**
 
-- 真实 CI（`ci` / `ci-windows` / `plugin-mount`）与 `ci-windows` 的连续两次绿；
-- 3080 人工验证：树行与编辑器 tab 的彩色图标、指南六行彩色、原生右侧栏芯片图标、14px 下官方 48 类图形的可读性（用户此前明确选择用官方图形；若细节折损不可接受，回退方案是「树行用官方图形、编辑器 tab 保留插件 glyph 着色」，改动只在 `file-icons.tsx` 一处）。
+- 3080 人工验证（返工后第二轮）：树行与编辑器 tab 的彩色图标、指南六行彩色、原生右侧栏芯片图标、14px 下官方 48 类图形的可读性、以及这次返工后的任务/终端两个图标（用户此前明确选择用官方图形；若细节折损不可接受，回退方案是「树行用官方图形、编辑器 tab 保留插件 glyph 着色」，改动只在 `file-icons.tsx` 一处）。
 
 ## 不做
 
