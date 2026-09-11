@@ -165,7 +165,7 @@ export interface TabDescriptor {
   /**
    * One-line description of what this tab shows, rendered under the title in
    * the host's new-tab list (DSH's native right Sidebar guide page). DSH
-   * 0.1.5-rc.1 renders descriptions only while the guide lists at most 4
+   * 0.1.5-rc.1+ renders descriptions only while the guide lists at most 4
    * entries — a longer list drops every description and shows titles alone —
    * and a descriptor that declares none renders the title by itself (the
    * host no longer substitutes a generic fallback, so declare the real
@@ -529,7 +529,7 @@ export function matchUrlTarget(tabs: readonly TabDescriptor[], url: URL): TabDes
  * The plugin version this service instance reports. Keep in lockstep with
  * `package.json`'s version — `tests/service.spec.ts` asserts the pair.
  */
-export const SIDEBAR_SERVICE_VERSION = '0.19.0'
+export const SIDEBAR_SERVICE_VERSION = '0.19.1'
 
 /**
  * Monotonic capability list consumers use to gate new API usage (features
